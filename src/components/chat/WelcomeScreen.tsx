@@ -54,30 +54,30 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 max-w-3xl mx-auto w-full text-center">
+    <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 py-5 sm:py-8 max-w-3xl mx-auto w-full text-center">
       {/* Centered Elegant AURA Symbol */}
-      <div className="mb-6 relative">
+      <div className="mb-4 sm:mb-6 relative">
         <AuraSymbol
-          size={64}
+          size={52}
           glow={true}
           animated={true}
           variant="gold"
-          className="transition-transform hover:scale-105 duration-300"
+          className="transition-transform hover:scale-105 duration-300 sm:scale-110"
         />
       </div>
 
       {/* Editorial Headline */}
-      <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-light text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mb-3">
+      <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-light text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mb-2 sm:mb-3">
         What would you like to explore?
       </h1>
 
       {/* Subheadline */}
-      <p className="text-base sm:text-lg text-[#6B493B] dark:text-[#DCC9B8] max-w-xl mx-auto leading-relaxed mb-8 font-sans font-normal">
+      <p className="text-sm sm:text-base md:text-lg text-[#6B493B] dark:text-[#DCC9B8] max-w-xl mx-auto leading-relaxed mb-5 sm:mb-8 font-sans font-normal">
         Ask AURA anything. Learn, build, write, or simply think out loud.
       </p>
 
       {/* Active mode indicator */}
-      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] text-xs text-[#4A3026] dark:text-[#DCC9B8] mb-8 shadow-xs">
+      <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] text-xs text-[#4A3026] dark:text-[#DCC9B8] mb-5 sm:mb-8 shadow-xs">
         <span className="w-1.5 h-1.5 rounded-full bg-[#C7A46A]" />
         <span>Currently in <strong>{currentModeInfo.name}</strong> mode:</span>
         <span className="text-[#8A7A70] dark:text-[#8A6756] hidden sm:inline">{currentModeInfo.tagline}</span>

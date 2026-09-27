@@ -183,12 +183,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </header>
 
       {/* Main Admin Body */}
-      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 gap-8">
-        {/* Admin Left Sidebar */}
-        <aside className="w-56 flex-shrink-0 space-y-1">
+      <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-8 gap-6 md:gap-8">
+        {/* Admin Left Sidebar / Mobile Nav Bar */}
+        <aside className="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col overflow-x-auto md:overflow-visible pb-2 md:pb-0 gap-1.5 md:space-y-1 scrollbar-none">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
               activeTab === 'overview'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -200,7 +200,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('prompts')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
               activeTab === 'prompts'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -212,7 +212,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('models')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
               activeTab === 'models'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -224,7 +224,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
               activeTab === 'analytics'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -236,7 +236,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
               activeTab === 'users'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'

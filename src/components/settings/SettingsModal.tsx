@@ -193,40 +193,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#8A7A70] dark:text-[#8A6756] mb-3">
                   Theme Appearance
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                   <button
                     onClick={() => onUpdateSettings({ theme: 'light' })}
-                    className={`p-4 rounded-2xl border text-center transition-all ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border text-center transition-all ${
                       settings.theme === 'light'
                         ? 'border-[#C7A46A] bg-[#EDE1D5]/50 dark:bg-[#2B1D17]'
                         : 'border-[#DCC9B8]/70 dark:border-[#3A2921]'
                     }`}
                   >
-                    <Sun className="w-5 h-5 mx-auto mb-2 text-[#6B493B]" />
+                    <Sun className="w-5 h-5 mx-auto mb-1.5 sm:mb-2 text-[#6B493B]" />
                     <span className="text-xs font-medium">Warm Cream (Light)</span>
                   </button>
 
                   <button
                     onClick={() => onUpdateSettings({ theme: 'dark' })}
-                    className={`p-4 rounded-2xl border text-center transition-all ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border text-center transition-all ${
                       settings.theme === 'dark'
                         ? 'border-[#C7A46A] bg-[#EDE1D5]/50 dark:bg-[#2B1D17]'
                         : 'border-[#DCC9B8]/70 dark:border-[#3A2921]'
                     }`}
                   >
-                    <Moon className="w-5 h-5 mx-auto mb-2 text-[#C7A46A]" />
+                    <Moon className="w-5 h-5 mx-auto mb-1.5 sm:mb-2 text-[#C7A46A]" />
                     <span className="text-xs font-medium">Night Espresso (Dark)</span>
                   </button>
 
                   <button
                     onClick={() => onUpdateSettings({ theme: 'system' })}
-                    className={`p-4 rounded-2xl border text-center transition-all ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border text-center transition-all ${
                       settings.theme === 'system'
                         ? 'border-[#C7A46A] bg-[#EDE1D5]/50 dark:bg-[#2B1D17]'
                         : 'border-[#DCC9B8]/70 dark:border-[#3A2921]'
                     }`}
                   >
-                    <Laptop className="w-5 h-5 mx-auto mb-2 text-[#8A6756]" />
+                    <Laptop className="w-5 h-5 mx-auto mb-1.5 sm:mb-2 text-[#8A6756]" />
                     <span className="text-xs font-medium">System Sync</span>
                   </button>
                 </div>

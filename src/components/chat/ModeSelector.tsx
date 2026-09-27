@@ -49,8 +49,8 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 rounded-full border border-[#DCC9B8] dark:border-[#3A2921] bg-[#FCFAF7]/90 dark:bg-[#211814]/90 text-[#4A3026] dark:text-[#EDE1D5] hover:border-[#C7A46A]/80 transition-all ${
-          compact ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs font-medium'
+        className={`flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#DCC9B8] dark:border-[#3A2921] bg-[#FCFAF7]/90 dark:bg-[#211814]/90 text-[#4A3026] dark:text-[#EDE1D5] hover:border-[#C7A46A]/80 transition-all ${
+          compact ? 'px-2 py-1 text-xs' : 'px-2.5 sm:px-3.5 py-1.5 text-xs font-medium'
         } shadow-sm`}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
@@ -69,7 +69,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute left-0 bottom-full mb-2 w-72 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/80 dark:border-[#3A2921] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+          className="absolute left-0 bottom-full mb-2 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/80 dark:border-[#3A2921] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
         >
           <div className="px-3 py-2 border-b border-[#EDE1D5] dark:border-[#2B1D17]">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8A7A70] dark:text-[#8A6756]">

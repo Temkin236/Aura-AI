@@ -430,6 +430,59 @@ async def ingest_stream(source: asyncio.Queue, target: asyncio.Queue):
         </div>
       </section>
 
+      {/* Learning & Mastery Section */}
+      <section id="learning" className="py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-[#DCC9B8]/40 dark:border-[#3A2921]/50">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-mono uppercase tracking-widest text-[#C7A46A] font-semibold">
+            Intellectual Mastery
+          </span>
+          <h2 className="text-4xl sm:text-5xl font-serif font-light text-[#2B1D17] dark:text-[#FCFAF7] mt-3 mb-4">
+            Mastery through inquiry.
+          </h2>
+          <p className="text-base sm:text-lg text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed font-sans">
+            A patient, rigorous study partner designed to deepen comprehension, unpack intricate mental models, and turn curiosity into genuine mastery.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="p-8 rounded-3xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#EDE1D5]/50 dark:bg-[#17110E] flex items-center justify-center text-[#C7A46A] mb-5">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <h3 className="text-xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] mb-2.5">
+              First-Principles Deconstruction
+            </h3>
+            <p className="text-sm text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed">
+              Strip away surface jargon to isolate foundational mechanics. Grasp advanced concepts through lucid analogies and mathematical intuition.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#EDE1D5]/50 dark:bg-[#17110E] flex items-center justify-center text-[#C7A46A] mb-5">
+              <Compass className="w-5 h-5" />
+            </div>
+            <h3 className="text-xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] mb-2.5">
+              Socratic Cross-Examination
+            </h3>
+            <p className="text-sm text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed">
+              Challenge your own hypotheses. AURA questions unspoken premises, tests edge cases, and guides you toward sound conclusions.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#EDE1D5]/50 dark:bg-[#17110E] flex items-center justify-center text-[#C7A46A] mb-5">
+              <Layers className="w-5 h-5" />
+            </div>
+            <h3 className="text-xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] mb-2.5">
+              Structured Knowledge Retention
+            </h3>
+            <p className="text-sm text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed">
+              Synthesize key takeaways into durable study guides, progressive difficulty drills, and clear cognitive maps ready for execution.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Final Editorial Call to Action */}
       <section className="py-24 border-t border-[#DCC9B8]/50 dark:border-[#3A2921] bg-[#FCFAF7] dark:bg-[#1E1612]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -476,6 +529,12 @@ async def ingest_stream(source: asyncio.Queue, target: asyncio.Queue):
             </a>
             <a href="#modes" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
               Personas
+            </a>
+            <a href="#capabilities" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+              Engineering
+            </a>
+            <a href="#learning" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+              Mastery
             </a>
             <span className="text-[#8A7A70]/60">&copy; {new Date().getFullYear()} AURA Intelligence Inc.</span>
           </div>

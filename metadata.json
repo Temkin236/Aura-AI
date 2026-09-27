@@ -1,0 +1,6 @@
+{
+  "name": "AURA AI",
+  "description": "An intelligent personal AI companion for learning, programming, research, writing, brainstorming, and creative work.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

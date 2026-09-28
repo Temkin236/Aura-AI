@@ -19,7 +19,9 @@ import {
   ChevronRight,
   Terminal,
   Cpu,
-  Bookmark
+  Bookmark,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -37,6 +39,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [activePreviewMode, setActivePreviewMode] = useState<AIModeId>('developer');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const previewSnippet = {
     developer: {
@@ -65,21 +68,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div className="min-h-screen bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5] selection:bg-[#DCC9B8] selection:text-[#2B1D17] transition-colors">
       
       {/* Top Editorial Navbar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-[#F8F3ED]/85 dark:bg-[#17110E]/85 border-b border-[#DCC9B8]/50 dark:border-[#3A2921]/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AuraSymbol size={32} glow={false} variant="gold" />
+      <nav className="sticky top-0 z-50 backdrop-blur-md bg-[#F8F3ED]/90 dark:bg-[#17110E]/90 border-b border-[#DCC9B8]/50 dark:border-[#3A2921]/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <AuraSymbol size={30} glow={false} variant="gold" />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-serif text-2xl tracking-wide font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
+              <span className="font-serif text-xl sm:text-2xl tracking-wide font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
                 AURA
               </span>
-              <span className="font-mono text-xs text-[#C7A46A] tracking-widest font-semibold uppercase">
+              <span className="font-mono text-[10px] sm:text-xs text-[#C7A46A] tracking-widest font-semibold uppercase">
                 AI
               </span>
             </div>
           </div>
 
-          {/* Clean text navigation */}
+          {/* Clean desktop text navigation */}
           <div className="hidden md:flex items-center gap-8 text-xs font-medium tracking-wide text-[#6B493B] dark:text-[#DCC9B8]">
             <a href="#why-aura" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
               Philosophy
@@ -96,29 +99,97 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onToggleTheme}
-              className="p-2 rounded-full text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors"
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-full text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors min-h-[40px] flex items-center justify-center"
               title="Toggle theme"
               aria-label="Toggle theme"
             >
-              <span className="text-xs font-mono">{isDarkMode ? 'LIGHT' : 'DARK'}</span>
+              <span className="text-[11px] sm:text-xs font-mono">{isDarkMode ? 'LIGHT' : 'DARK'}</span>
             </button>
 
             <button
               onClick={onStartChatting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2B1D17] text-[#FCFAF7] hover:bg-[#4A3026] text-xs font-semibold tracking-wider uppercase transition-all shadow-sm hover:shadow-md active:scale-95"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] hover:bg-[#4A3026] dark:hover:bg-[#EDE1D5] text-xs font-semibold tracking-wider uppercase transition-all shadow-sm hover:shadow-md active:scale-95 min-h-[40px]"
             >
               <span>Start chatting</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#C7A46A]" />
             </button>
+
+            {/* Mobile menu hamburger toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-[#DCC9B8]/40 dark:border-[#3A2921]/60 bg-[#FCFAF7] dark:bg-[#1E1511] px-4 py-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-col space-y-2 text-sm font-medium text-[#6B493B] dark:text-[#DCC9B8]">
+              <a
+                href="#why-aura"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] transition-colors min-h-[44px] flex items-center"
+              >
+                Philosophy
+              </a>
+              <a
+                href="#modes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] transition-colors min-h-[44px] flex items-center"
+              >
+                Personas
+              </a>
+              <a
+                href="#capabilities"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] transition-colors min-h-[44px] flex items-center"
+              >
+                Engineering
+              </a>
+              <a
+                href="#learning"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] transition-colors min-h-[44px] flex items-center"
+              >
+                Mastery
+              </a>
+            </div>
+
+            <div className="pt-2 border-t border-[#EDE1D5] dark:border-[#2B1D17] flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAdmin();
+                }}
+                className="px-3 py-2 text-xs font-medium text-[#8A6756] dark:text-[#C7A46A] hover:underline min-h-[44px] flex items-center"
+              >
+                Admin Console
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onStartChatting();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] text-xs font-semibold uppercase tracking-wider min-h-[44px]"
+              >
+                <span>Launch App</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#C7A46A]" />
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-16 sm:pt-24 pb-20 overflow-hidden">
+      <section className="relative pt-12 sm:pt-20 pb-16 sm:pb-20 overflow-hidden">
         {/* Subtle decorative aura shapes */}
         <div 
           className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full blur-3xl opacity-35 dark:opacity-20 pointer-events-none"
@@ -166,7 +237,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Hero Visual: Floating Interactive AURA Conversation Interface */}
           <div className="relative max-w-4xl mx-auto rounded-3xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/90 dark:border-[#3A2921] shadow-2xl p-4 sm:p-6 text-left">
             {/* Window bar */}
-            <div className="flex items-center justify-between pb-4 border-b border-[#EDE1D5] dark:border-[#2B1D17] mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#EDE1D5] dark:border-[#2B1D17] mb-6">
               <div className="flex items-center gap-3">
                 <AuraSymbol size={24} variant="gold" glow={true} />
                 <div>
@@ -180,12 +251,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Mode switch pills */}
-              <div className="flex items-center gap-1 bg-[#EDE1D5]/50 dark:bg-[#2B1D17] p-1 rounded-xl">
+              <div className="flex items-center gap-1 bg-[#EDE1D5]/50 dark:bg-[#2B1D17] p-1 rounded-xl overflow-x-auto max-w-full">
                 {(Object.keys(AI_MODES) as AIModeId[]).slice(0, 4).map((mId) => (
                   <button
                     key={mId}
                     onClick={() => setActivePreviewMode(mId)}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+                    className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all whitespace-nowrap min-h-[32px] ${
                       activePreviewMode === mId
                         ? 'bg-white dark:bg-[#17110E] text-[#2B1D17] dark:text-[#FCFAF7] shadow-xs'
                         : 'text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7]'
@@ -207,19 +278,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* AI message */}
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <AuraSymbol size={28} variant="gold" />
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 space-y-2 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-serif text-sm font-semibold text-[#2B1D17] dark:text-[#FCFAF7]">
                       AURA
                     </span>
                     <span className="text-xs text-[#8A6756]">&middot;</span>
-                    <span className="text-xs text-[#C7A46A] font-medium">
+                    <span className="text-xs text-[#C7A46A] font-medium truncate">
                       {AI_MODES[activePreviewMode].name} Mode
                     </span>
                   </div>
-                  <div className="text-sm leading-relaxed text-[#2B1D17] dark:text-[#EDE1D5] bg-[#F8F3ED]/60 dark:bg-[#17110E]/60 p-4 rounded-2xl border border-[#EDE1D5] dark:border-[#2B1D17]">
+                  <div className="text-sm leading-relaxed text-[#2B1D17] dark:text-[#EDE1D5] bg-[#F8F3ED]/60 dark:bg-[#17110E]/60 p-4 rounded-2xl border border-[#EDE1D5] dark:border-[#2B1D17] overflow-x-auto">
                     <MarkdownContent content={previewSnippet.assistant} />
                   </div>
                 </div>
@@ -231,7 +302,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Ready to continue this thought?</span>
               <button
                 onClick={onStartChatting}
-                className="font-medium text-[#6B493B] dark:text-[#C7A46A] hover:underline flex items-center gap-1"
+                className="font-medium text-[#6B493B] dark:text-[#C7A46A] hover:underline flex items-center gap-1 min-h-[36px] px-2 py-1 active:scale-95 transition-transform"
               >
                 <span>Open in workspace</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -333,7 +404,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {(Object.keys(AI_MODES) as AIModeId[]).map((modeId) => {
               const mode = AI_MODES[modeId];
               return (
@@ -362,10 +433,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                   <button
                     onClick={onStartChatting}
-                    className="mt-6 pt-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] text-[11px] font-semibold text-[#6B493B] dark:text-[#DCC9B8] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] flex items-center justify-between"
+                    className="mt-6 pt-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] text-xs font-semibold text-[#6B493B] dark:text-[#DCC9B8] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] flex items-center justify-between min-h-[44px] w-full px-1 active:scale-95 transition-transform"
                   >
                     <span>Use persona</span>
-                    <ArrowRight className="w-3 h-3 text-[#C7A46A]" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#C7A46A]" />
                   </button>
                 </div>
               );
@@ -405,7 +476,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={onStartChatting}
-              className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#4A3026] text-[#FCFAF7] hover:bg-[#2B1D17] text-xs font-medium tracking-wide transition-all shadow-sm"
+              className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#4A3026] text-[#FCFAF7] hover:bg-[#2B1D17] text-xs font-medium tracking-wide transition-all shadow-sm active:scale-95 min-h-[44px]"
             >
               <Terminal className="w-3.5 h-3.5 text-[#C7A46A]" />
               <span>Explore Developer Mode</span>
@@ -413,7 +484,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Code Preview Card */}
-          <div className="shadow-xl">
+          <div className="shadow-xl overflow-hidden rounded-2xl">
             <CodeBlock
               language="python"
               code={`# Bounded concurrency with backpressure
@@ -498,7 +569,7 @@ async def ingest_stream(source: asyncio.Queue, target: asyncio.Queue):
 
           <button
             onClick={onStartChatting}
-            className="inline-flex items-center justify-center gap-3 px-9 py-4 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] hover:bg-[#4A3026] text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 group"
+            className="inline-flex items-center justify-center gap-3 px-9 py-4 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] hover:bg-[#4A3026] text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 group min-h-[50px]"
           >
             <span>Launch AURA AI</span>
             <ArrowRight className="w-4 h-4 text-[#C7A46A] group-hover:translate-x-1 transition-transform" />
@@ -508,35 +579,35 @@ async def ingest_stream(source: asyncio.Queue, target: asyncio.Queue):
 
       {/* Editorial Luxury Footer */}
       <footer className="py-12 border-t border-[#DCC9B8]/40 dark:border-[#3A2921] text-xs text-[#8A7A70] dark:text-[#8A6756]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <div className="flex items-center gap-3">
             <AuraSymbol size={22} variant="gold" />
             <span className="font-serif text-base font-semibold text-[#2B1D17] dark:text-[#FCFAF7]">
               AURA AI
             </span>
-            <span className="text-[11px]">&middot; Think better. Create freely.</span>
+            <span className="text-[11px] hidden sm:inline">&middot; Think better. Create freely.</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 sm:gap-x-6 gap-y-2">
             <button
               onClick={onOpenAdmin}
-              className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors"
+              className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors min-h-[36px] flex items-center"
             >
               Admin Console
             </button>
-            <a href="#why-aura" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+            <a href="#why-aura" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors min-h-[36px] flex items-center">
               Philosophy
             </a>
-            <a href="#modes" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+            <a href="#modes" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors min-h-[36px] flex items-center">
               Personas
             </a>
-            <a href="#capabilities" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+            <a href="#capabilities" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors min-h-[36px] flex items-center">
               Engineering
             </a>
-            <a href="#learning" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors">
+            <a href="#learning" className="hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-colors min-h-[36px] flex items-center">
               Mastery
             </a>
-            <span className="text-[#8A7A70]/60">&copy; {new Date().getFullYear()} AURA Intelligence Inc.</span>
+            <span className="text-[#8A7A70]/60 w-full sm:w-auto text-center mt-2 sm:mt-0">&copy; {new Date().getFullYear()} AURA Intelligence Inc.</span>
           </div>
         </div>
       </footer>

@@ -44,12 +44,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   if (isUser) {
     return (
-      <div className="flex justify-end py-3 px-4 max-w-4xl mx-auto w-full group">
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 bg-[#4A3026] text-[#FCFAF7] shadow-sm selection:bg-[#C7A46A] selection:text-[#2B1D17] transition-all">
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-sans">
+      <div className="flex justify-end py-2.5 sm:py-3 px-3 sm:px-4 max-w-4xl mx-auto w-full group">
+        <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 bg-[#4A3026] text-[#FCFAF7] shadow-sm selection:bg-[#C7A46A] selection:text-[#2B1D17] transition-all">
+          <p className="text-[15px] sm:text-base leading-relaxed whitespace-pre-wrap font-sans">
             {message.content}
           </p>
-          <div className="flex items-center justify-end gap-2 mt-1.5 opacity-60 text-[11px] text-[#EDE1D5]">
+          <div className="flex items-center justify-end gap-2 mt-1.5 opacity-60 text-[10px] sm:text-[11px] text-[#EDE1D5]">
             <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         </div>
@@ -59,12 +59,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   // AI Message - Luxury Editorial Layout
   return (
-    <div className="py-5 px-4 sm:px-6 max-w-4xl mx-auto w-full group transition-colors">
-      <div className="flex items-start gap-4">
+    <div className="py-4 sm:py-5 px-3 sm:px-6 max-w-4xl mx-auto w-full group transition-colors">
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* AURA Symbol Avatar */}
         <div className="pt-1 flex-shrink-0">
           <AuraSymbol
-            size={30}
+            size={28}
             animated={message.isStreaming}
             glow={message.isStreaming}
             variant="gold"
@@ -75,7 +75,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         <div className="flex-1 min-w-0 space-y-3">
           {/* Header Metadata */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="font-serif text-sm font-semibold tracking-wide text-[#2B1D17] dark:text-[#FCFAF7]">
                 AURA
               </span>
@@ -105,13 +105,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               ) : null}
             </div>
 
-            <span className="text-[11px] text-[#8A7A70] dark:text-[#8A6756]">
+            <span className="text-[10px] sm:text-[11px] text-[#8A7A70] dark:text-[#8A6756] shrink-0">
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
 
           {/* Body Content */}
-          <div className="prose-aura">
+          <div className="prose-aura overflow-x-auto">
             {message.content ? (
               <MarkdownContent content={message.content} />
             ) : message.isStreaming ? (
@@ -124,10 +124,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
           {/* Action Controls */}
           {!message.isStreaming && message.content && (
-            <div className="flex items-center gap-1 pt-2 opacity-85 transition-opacity">
+            <div className="flex items-center gap-1.5 pt-2 opacity-90 transition-opacity flex-wrap">
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] active:scale-95 transition-all min-h-[34px]"
                 title="Copy response"
                 aria-label="Copy response"
               >
@@ -147,7 +147,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               {onRegenerate && (
                 <button
                   onClick={onRegenerate}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] active:scale-95 transition-all min-h-[34px]"
                   title="Regenerate response"
                   aria-label="Regenerate response"
                 >
@@ -156,11 +156,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </button>
               )}
 
-              <div className="w-px h-3.5 bg-[#DCC9B8]/60 dark:bg-[#3A2921] mx-1" />
+              <div className="w-px h-3.5 bg-[#DCC9B8]/60 dark:bg-[#3A2921] mx-0.5" />
 
               <button
                 onClick={() => handleFeedback('helpful')}
-                className={`p-1.5 rounded-md transition-all ${
+                className={`w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg active:scale-95 transition-all ${
                   localFeedback === 'helpful'
                     ? 'text-[#C7A46A] bg-[#EDE1D5] dark:bg-[#2B1D17]'
                     : 'text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'
@@ -173,7 +173,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
               <button
                 onClick={() => handleFeedback('unhelpful')}
-                className={`p-1.5 rounded-md transition-all ${
+                className={`w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg active:scale-95 transition-all ${
                   localFeedback === 'unhelpful'
                     ? 'text-[#C7A46A] bg-[#EDE1D5] dark:bg-[#2B1D17]'
                     : 'text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'

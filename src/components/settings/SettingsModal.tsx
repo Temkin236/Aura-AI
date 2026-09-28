@@ -44,16 +44,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDE1D5] dark:border-[#2B1D17]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#EDE1D5] dark:border-[#2B1D17]">
           <div className="flex items-center gap-3">
             <AuraSymbol size={24} variant="gold" />
-            <h2 className="font-serif text-xl font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
+            <h2 className="font-serif text-lg sm:text-xl font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
               Settings
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all"
             aria-label="Close settings"
           >
             <X className="w-5 h-5" />
@@ -61,12 +61,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div className="flex items-center gap-2 px-6 pt-3 pb-2 border-b border-[#EDE1D5] dark:border-[#2B1D17] overflow-x-auto text-xs font-medium">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 pt-3 pb-2 border-b border-[#EDE1D5] dark:border-[#2B1D17] overflow-x-auto text-xs font-medium scrollbar-none">
           <button
             onClick={() => setActiveTab('ai')}
-            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-2 rounded-xl transition-all whitespace-nowrap min-h-[36px] active:scale-95 ${
               activeTab === 'ai'
-                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17]'
+                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-xs'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'
             }`}
           >
@@ -74,9 +74,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('appearance')}
-            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-2 rounded-xl transition-all whitespace-nowrap min-h-[36px] active:scale-95 ${
               activeTab === 'appearance'
-                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17]'
+                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-xs'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'
             }`}
           >
@@ -84,9 +84,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('conversation')}
-            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-2 rounded-xl transition-all whitespace-nowrap min-h-[36px] active:scale-95 ${
               activeTab === 'conversation'
-                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17]'
+                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-xs'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'
             }`}
           >
@@ -94,9 +94,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('privacy')}
-            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-2 rounded-xl transition-all whitespace-nowrap min-h-[36px] active:scale-95 ${
               activeTab === 'privacy'
-                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17]'
+                ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-xs'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]'
             }`}
           >
@@ -105,7 +105,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 text-sm">
           {activeTab === 'ai' && (
             <div className="space-y-6">
               {/* Default Mode */}
@@ -275,7 +275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Danger Zone
                 </h4>
                 {clearedConfirm ? (
-                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-xs text-red-700 dark:text-red-300">Are you sure? This cannot be undone.</span>
                     <div className="flex gap-2">
                       <button
@@ -283,13 +283,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onClearAllConversations();
                           setClearedConfirm(false);
                         }}
-                        className="px-3 py-1 rounded bg-red-600 text-white text-xs font-medium"
+                        className="px-3.5 py-2 rounded-lg bg-red-600 text-white text-xs font-medium active:scale-95 transition-all min-h-[36px]"
                       >
                         Yes, Clear All
                       </button>
                       <button
                         onClick={() => setClearedConfirm(false)}
-                        className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 text-xs"
+                        className="px-3.5 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-xs active:scale-95 transition-all min-h-[36px]"
                       >
                         Cancel
                       </button>
@@ -298,7 +298,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ) : (
                   <button
                     onClick={() => setClearedConfirm(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900 transition-colors"
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900 transition-colors active:scale-95 min-h-[40px]"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Clear all conversations</span>
@@ -324,10 +324,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-[#EDE1D5]/40 dark:bg-[#17110E] border-t border-[#EDE1D5] dark:border-[#2B1D17] flex justify-end">
+        <div className="px-4 sm:px-6 py-3.5 bg-[#EDE1D5]/40 dark:bg-[#17110E] border-t border-[#EDE1D5] dark:border-[#2B1D17] flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] text-xs font-semibold tracking-wide hover:bg-[#4A3026] transition-all"
+            className="px-6 py-2.5 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] text-xs font-semibold tracking-wide hover:bg-[#4A3026] active:scale-95 transition-all min-h-[40px]"
           >
             Done
           </button>

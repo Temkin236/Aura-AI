@@ -438,7 +438,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       {/* Main Workspace Frame */}
       <main className="flex-1 flex flex-col h-full min-w-0 relative">
         {/* Workspace Top Header */}
-        <header className="h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between border-b border-[#DCC9B8]/60 dark:border-[#3A2921] bg-[#FCFAF7]/80 dark:bg-[#17110E]/80 backdrop-blur-md z-10">
+        <header className="h-14 sm:h-16 px-2.5 sm:px-6 flex items-center justify-between border-b border-[#DCC9B8]/60 dark:border-[#3A2921] bg-[#FCFAF7]/85 dark:bg-[#17110E]/85 backdrop-blur-md z-10">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
             {/* Sidebar Toggle for Desktop and Mobile */}
             <button
@@ -449,7 +449,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   setSidebarOpen(!sidebarOpen);
                 }
               }}
-              className="p-2 rounded-lg text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors shrink-0"
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all shrink-0"
               title="Toggle sidebar"
               aria-label="Toggle sidebar"
             >
@@ -457,12 +457,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             </button>
 
             <div className="flex items-center gap-2 min-w-0 truncate">
-              <span className="font-serif text-sm sm:text-base md:text-lg font-medium text-[#2B1D17] dark:text-[#FCFAF7] truncate">
+              <span className="font-serif text-sm sm:text-base md:text-lg font-medium text-[#2B1D17] dark:text-[#FCFAF7] truncate max-w-[130px] sm:max-w-xs md:max-w-md">
                 {activeConversation?.title || 'What would you like to explore?'}
               </span>
 
               {activeConversation && (
-                <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#DCC9B8] border border-[#DCC9B8]/70 dark:border-[#3A2921] shrink-0">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#DCC9B8] border border-[#DCC9B8]/70 dark:border-[#3A2921] shrink-0">
                   <Sparkles className="w-3 h-3 text-[#C7A46A]" />
                   {AI_MODES[activeConversation.mode]?.name}
                 </span>
@@ -475,7 +475,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             <button
               onClick={handleExportConversation}
               disabled={currentMessages.length === 0}
-              className="p-2 rounded-lg text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               title="Export conversation"
               aria-label="Export conversation"
             >
@@ -485,7 +485,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             <button
               onClick={handleClearMessages}
               disabled={currentMessages.length === 0}
-              className="p-2 rounded-lg text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               title="Clear messages in conversation"
               aria-label="Clear messages"
             >
@@ -494,7 +494,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
             <button
               onClick={onOpenLanding}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#4A3026] dark:text-[#EDE1D5] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814] transition-all"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#4A3026] dark:text-[#EDE1D5] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814] active:scale-95 transition-all min-h-[36px]"
             >
               <span>Explore AURA</span>
             </button>

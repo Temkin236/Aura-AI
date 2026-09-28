@@ -68,7 +68,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
           {isCollapsible && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[#DCC9B8] hover:text-[#FCFAF7] hover:bg-[#2B1D17] transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[#DCC9B8] hover:text-[#FCFAF7] hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[32px]"
               title={isExpanded ? 'Collapse' : 'Expand'}
             >
               {isExpanded ? (
@@ -87,7 +87,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#2B1D17] hover:bg-[#3A2921] text-[#EDE1D5] hover:text-[#FCFAF7] transition-all border border-[#4A3026]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#2B1D17] hover:bg-[#3A2921] text-[#EDE1D5] hover:text-[#FCFAF7] active:scale-95 transition-all border border-[#4A3026] min-h-[32px]"
             aria-label="Copy code"
           >
             {copied ? (

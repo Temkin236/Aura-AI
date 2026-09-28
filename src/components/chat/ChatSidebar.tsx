@@ -199,7 +199,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               onNewConversation();
               onCloseMobile();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#2B1D17] dark:bg-[#2B1D17] text-[#FCFAF7] hover:bg-[#4A3026] dark:hover:bg-[#3A2921] transition-all shadow-xs group font-sans text-xs tracking-wide uppercase font-semibold"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#2B1D17] dark:bg-[#2B1D17] text-[#FCFAF7] hover:bg-[#4A3026] dark:hover:bg-[#3A2921] active:scale-95 transition-all shadow-xs group font-sans text-xs tracking-wide uppercase font-semibold min-h-[44px]"
           >
             <Plus className="w-4 h-4 text-[#C7A46A] group-hover:rotate-90 transition-transform duration-200" />
             <span>New conversation</span>
@@ -337,11 +337,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         {/* Bottom Bar: Settings, Admin, Theme Toggle */}
-        <div className="p-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] bg-[#F8F3ED]/80 dark:bg-[#1E1612]/80 space-y-1">
-          <div className="flex items-center justify-between px-1 py-1">
+        <div className="p-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] bg-[#F8F3ED]/90 dark:bg-[#1E1612]/90 space-y-1">
+          <div className="flex items-center justify-between gap-1 px-1 py-1">
             <button
               onClick={onToggleTheme}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[38px]"
               title="Toggle theme"
             >
               {isDarkMode ? (
@@ -362,7 +362,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 onOpenSettings();
                 onCloseMobile();
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[38px]"
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Settings</span>
@@ -373,7 +373,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 onOpenAdmin();
                 onCloseMobile();
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[38px]"
               title="Admin Console"
             >
               <LayoutDashboard className="w-3.5 h-3.5 text-[#C7A46A]" />
@@ -466,11 +466,11 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between p-2">
+                <div className="flex items-center justify-between p-1.5 sm:p-2 min-h-[40px]">
                   <button
                     type="button"
                     onClick={() => onSelect(conv.id)}
-                    className="flex-1 min-w-0 text-left flex items-center gap-2"
+                    className="flex-1 min-w-0 text-left flex items-center gap-2 py-1 px-1"
                   >
                     {conv.pinned && (
                       <Pin className="w-3 h-3 text-[#C7A46A] flex-shrink-0" />
@@ -480,14 +480,14 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                     </span>
                   </button>
 
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleMenu(conv.id);
                       }}
-                      className="p-1 rounded hover:bg-[#DCC9B8]/50 dark:hover:bg-[#3A2921] text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7]"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#DCC9B8]/50 dark:hover:bg-[#3A2921] active:scale-95 text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] transition-all"
                       aria-label="Conversation options"
                     >
                       <MoreVertical className="w-3.5 h-3.5" />
@@ -499,7 +499,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
               {/* Context Dropdown Menu */}
               {isMenuOpen && (
                 <div
-                  className="absolute right-2 top-full mt-1 w-36 rounded-xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] shadow-lg p-1 z-50 animate-in fade-in zoom-in-95 text-xs"
+                  className="absolute right-2 top-full mt-1 w-40 rounded-xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] shadow-lg p-1.5 z-50 animate-in fade-in zoom-in-95 text-xs"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -507,7 +507,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       onTogglePin(conv.id);
                       onToggleMenu(conv.id);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] text-[#4A3026] dark:text-[#EDE1D5]"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 text-[#4A3026] dark:text-[#EDE1D5] min-h-[36px]"
                   >
                     <Pin className="w-3.5 h-3.5 text-[#C7A46A]" />
                     <span>{conv.pinned ? 'Unpin' : 'Pin'}</span>
@@ -515,7 +515,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
 
                   <button
                     onClick={() => onRename(conv)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] text-[#4A3026] dark:text-[#EDE1D5]"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 text-[#4A3026] dark:text-[#EDE1D5] min-h-[36px]"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                     <span>Rename</span>
@@ -526,7 +526,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       onArchive(conv.id);
                       onToggleMenu(conv.id);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] text-[#4A3026] dark:text-[#EDE1D5]"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 text-[#4A3026] dark:text-[#EDE1D5] min-h-[36px]"
                   >
                     <Archive className="w-3.5 h-3.5" />
                     <span>Archive</span>
@@ -537,7 +537,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       onDelete(conv.id);
                       onToggleMenu(conv.id);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-red-100/50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-100/50 dark:hover:bg-red-950/40 active:scale-95 text-red-600 dark:text-red-400 min-h-[36px]"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete</span>

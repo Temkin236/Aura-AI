@@ -90,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             key={idx}
             type="button"
             onClick={() => onSelectPrompt(card.prompt, card.mode)}
-            className="group relative p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+            className="group relative p-3.5 sm:p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px]"
           >
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -115,7 +115,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         <button
           type="button"
           onClick={() => onSelectPrompt('I have an idea I want to think through with you. Help me explore it from multiple angles.', 'friendly')}
-          className="group relative p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+          className="group relative p-3.5 sm:p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px]"
         >
           <div>
             <div className="flex items-center justify-between mb-2">

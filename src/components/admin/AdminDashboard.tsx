@@ -145,37 +145,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="min-h-screen bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5] flex flex-col">
       {/* Top Admin Nav */}
-      <header className="h-16 px-6 border-b border-[#DCC9B8]/70 dark:border-[#3A2921] bg-[#FCFAF7]/90 dark:bg-[#1E1511]/90 flex items-center justify-between backdrop-blur-md sticky top-0 z-30">
-        <div className="flex items-center gap-4">
+      <header className="h-16 px-3 sm:px-6 border-b border-[#DCC9B8]/70 dark:border-[#3A2921] bg-[#FCFAF7]/90 dark:bg-[#1E1511]/90 flex items-center justify-between backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center gap-2.5 sm:gap-4">
           <button
             onClick={onBackToChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-colors"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[36px]"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Workspace</span>
+            <span className="hidden xs:inline">Workspace</span>
           </button>
 
           <div className="h-4 w-px bg-[#DCC9B8] dark:bg-[#3A2921]" />
 
-          <div className="flex items-center gap-2.5">
-            <AuraSymbol size={26} variant="gold" />
-            <span className="font-serif text-lg font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <AuraSymbol size={24} variant="gold" />
+            <span className="font-serif text-base sm:text-lg font-medium text-[#2B1D17] dark:text-[#FCFAF7]">
               AURA
             </span>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#EDE1D5] dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#C7A46A] uppercase font-semibold">
-              Admin Control
+            <span className="text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#EDE1D5] dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#C7A46A] uppercase font-semibold">
+              Admin
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleTheme}
-            className="text-xs font-mono px-2.5 py-1 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] hover:bg-[#EDE1D5]/50 transition-colors"
+            className="text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] hover:bg-[#EDE1D5]/50 active:scale-95 transition-all min-h-[36px]"
           >
             {isDarkMode ? 'LIGHT' : 'DARK'}
           </button>
-          <div className="flex items-center gap-2 text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8]">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Systems Optimal</span>
           </div>
@@ -183,12 +183,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </header>
 
       {/* Main Admin Body */}
-      <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-8 gap-6 md:gap-8">
+      <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-8 gap-4 sm:gap-6 md:gap-8">
         {/* Admin Left Sidebar / Mobile Nav Bar */}
         <aside className="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col overflow-x-auto md:overflow-visible pb-2 md:pb-0 gap-1.5 md:space-y-1 scrollbar-none">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full min-h-[40px] active:scale-95 ${
               activeTab === 'overview'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -200,7 +200,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('prompts')}
-            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full min-h-[40px] active:scale-95 ${
               activeTab === 'prompts'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -212,7 +212,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('models')}
-            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full min-h-[40px] active:scale-95 ${
               activeTab === 'models'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -224,7 +224,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full min-h-[40px] active:scale-95 ${
               activeTab === 'analytics'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -236,7 +236,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 md:w-full min-h-[40px] active:scale-95 ${
               activeTab === 'users'
                 ? 'bg-[#2B1D17] text-[#FCFAF7] shadow-sm'
                 : 'text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814]'
@@ -386,23 +386,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className="p-5 rounded-2xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/80 dark:border-[#3A2921]"
+                      className="p-4 sm:p-5 rounded-2xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/80 dark:border-[#3A2921]"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-serif text-lg font-medium">{p.title}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                          <h3 className="font-serif text-base sm:text-lg font-medium">{p.title}</h3>
                           <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-[#EDE1D5] dark:bg-[#2B1D17] text-[#4A3026] dark:text-[#C7A46A]">
                             v{p.version}
                           </span>
                           <span className="text-[11px] text-[#8A7A70]">Updated {p.updatedAt}</span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs">
+                        <div className="flex items-center gap-3 text-xs flex-wrap">
                           <span className="font-mono text-[#8A7A70]">Temp: {p.temperature}</span>
                           {!isEditing ? (
                             <button
                               onClick={() => handleEditPrompt(p)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] hover:border-[#C7A46A] transition-colors text-[#4A3026] dark:text-[#EDE1D5]"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#DCC9B8] dark:border-[#3A2921] hover:border-[#C7A46A] active:scale-95 transition-all text-[#4A3026] dark:text-[#EDE1D5] min-h-[36px]"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-[#C7A46A]" />
                               <span>Edit Prompt</span>
@@ -411,14 +411,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleSavePrompt(p.id)}
-                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#2B1D17] text-[#FCFAF7] text-xs font-medium"
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#2B1D17] text-[#FCFAF7] text-xs font-medium active:scale-95 transition-all min-h-[36px]"
                               >
                                 <Check className="w-3.5 h-3.5 text-[#C7A46A]" />
                                 <span>Save v{p.version + 1}</span>
                               </button>
                               <button
                                 onClick={() => setEditingPromptId(null)}
-                                className="px-3 py-1.5 rounded-lg border border-[#DCC9B8] text-xs"
+                                className="px-3 py-1.5 rounded-lg border border-[#DCC9B8] text-xs active:scale-95 transition-all min-h-[36px]"
                               >
                                 Cancel
                               </button>
@@ -435,7 +435,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="w-full p-3 font-mono text-xs rounded-xl bg-white dark:bg-[#17110E] border border-[#C7A46A] text-[#2B1D17] dark:text-[#FCFAF7] focus:outline-none leading-relaxed"
                         />
                       ) : (
-                        <div className="p-3 rounded-xl bg-[#EDE1D5]/30 dark:bg-[#17110E]/60 text-xs font-mono text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed whitespace-pre-wrap">
+                        <div className="p-3 rounded-xl bg-[#EDE1D5]/30 dark:bg-[#17110E]/60 text-xs font-mono text-[#6B493B] dark:text-[#DCC9B8] leading-relaxed whitespace-pre-wrap overflow-x-auto">
                           {p.systemInstruction}
                         </div>
                       )}
@@ -461,10 +461,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {models.map((m) => (
                   <div
                     key={m.id}
-                    className="p-5 rounded-2xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/80 dark:border-[#3A2921] flex items-center justify-between"
+                    className="p-4 sm:p-5 rounded-2xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8]/80 dark:border-[#3A2921] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-medium text-sm text-[#2B1D17] dark:text-[#FCFAF7]">
                           {m.name}
                         </h3>
@@ -474,7 +474,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-[#8A7A70] mt-1">
+                      <div className="flex items-center gap-2 sm:gap-3 text-xs text-[#8A7A70] mt-1 flex-wrap">
                         <span>Provider: {m.provider}</span>
                         <span>&middot;</span>
                         <span className="font-mono">{m.modelId}</span>
@@ -483,7 +483,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                     </div>
 
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium capitalize bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <span className="self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-medium capitalize bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                       {m.status}
                     </span>
                   </div>
@@ -524,8 +524,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#DCC9B8]/80 dark:border-[#3A2921] overflow-hidden bg-[#FCFAF7] dark:bg-[#1E1511]">
-                <table className="w-full text-xs text-left">
+              <div className="rounded-2xl border border-[#DCC9B8]/80 dark:border-[#3A2921] overflow-x-auto bg-[#FCFAF7] dark:bg-[#1E1511]">
+                <table className="w-full text-xs text-left min-w-[480px]">
                   <thead className="bg-[#EDE1D5]/40 dark:bg-[#17110E] border-b border-[#DCC9B8]/60 text-[#8A7A70]">
                     <tr>
                       <th className="p-3.5 font-medium">User</th>

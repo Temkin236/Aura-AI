@@ -36,10 +36,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     try {
       const saved = localStorage.getItem('aura_conversations');
-      return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {
-      return INITIAL_CONVERSATIONS;
+      // fallback
     }
+    return INITIAL_CONVERSATIONS;
   });
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>('conv-1');
@@ -47,7 +51,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>(() => {
     try {
       const saved = localStorage.getItem('aura_messages');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
     } catch {
       // fallback
     }
@@ -60,7 +69,9 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         conversationId: id,
         role: m.role,
         content: m.content,
-        timestamp: m.timestamp
+        timestamp: m.timestamp,
+        model: m.role === 'assistant' ? 'aura-local-fallback' : undefined,
+        isFallback: m.role === 'assistant' ? true : undefined
       }));
     });
     return map;
@@ -73,18 +84,26 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Debounced safe local storage sync (avoids writing to disk on every streamed token)
+  // Sync mode if user updates defaultMode setting and active conversation is new
   useEffect(() => {
+    if (userSettings.defaultMode && (!activeConversation || activeConversation.messageCount === 0)) {
+      setCurrentMode(userSettings.defaultMode);
+    }
+  }, [userSettings.defaultMode]);
+
+  // Debounced safe local storage sync (respects userSettings.saveHistory)
+  useEffect(() => {
+    if (userSettings.saveHistory === false) return;
     try {
       localStorage.setItem('aura_conversations', JSON.stringify(conversations));
     } catch (e) {
       console.warn('LocalStorage quota or write error:', e);
     }
-  }, [conversations]);
+  }, [conversations, userSettings.saveHistory]);
 
   useEffect(() => {
-    // Skip saving intermediate states during active generation
-    if (isGenerating) return;
+    // Skip saving intermediate states during active generation or if saveHistory is disabled
+    if (isGenerating || userSettings.saveHistory === false) return;
 
     const timer = setTimeout(() => {
       try {
@@ -95,7 +114,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [messagesMap, isGenerating]);
+  }, [messagesMap, isGenerating, userSettings.saveHistory]);
 
   // Current active conversation
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
@@ -210,9 +229,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       [currentId]: [...(prev[currentId] || []), userMessage, initialAssistantMessage]
     }));
 
-    // Update conversation title if default
+    // Update conversation title if default and autoTitle is enabled
     const currentConv = conversations.find((c) => c.id === currentId);
-    if (currentConv && (currentConv.title === 'New conversation' || currentConv.messageCount === 0)) {
+    if (
+      currentConv &&
+      (currentConv.title === 'New conversation' || currentConv.messageCount === 0) &&
+      userSettings.autoTitle !== false
+    ) {
       const generatedTitle = text.slice(0, 36) + (text.length > 36 ? '...' : '');
       setConversations((prev) =>
         prev.map((c) => (c.id === currentId ? { ...c, title: generatedTitle, messageCount: c.messageCount + 2 } : c))
@@ -235,7 +258,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           prompt: text,
           mode: modeToUse,
           model: userSettings.model || 'gemini-2.5-flash',
-          temperature: userSettings.temperature ?? 0.7,
+          temperature: userSettings.temperature ?? modeConfig.temperature,
           systemInstruction: modeConfig.systemPrompt,
           history: conversationHistory.slice(-8).map((m) => ({
             role: m.role === 'assistant' ? 'model' : 'user',
@@ -419,7 +442,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           setActiveConversationId(id);
           setMobileDrawerOpen(false);
         }}
-        onNewConversation={() => handleNewConversation(currentMode)}
+        onNewConversation={() => handleNewConversation(userSettings.defaultMode || currentMode)}
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
         onArchiveConversation={handleArchiveConversation}

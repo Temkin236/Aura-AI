@@ -93,15 +93,22 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       yesterday: Conversation[];
       previous7Days: Conversation[];
       older: Conversation[];
+      archived: Conversation[];
     } = {
       pinned: [],
       today: [],
       yesterday: [],
       previous7Days: [],
-      older: []
+      older: [],
+      archived: []
     };
 
     filteredConversations.forEach((conv) => {
+      if (conv.archived) {
+        groups.archived.push(conv);
+        return;
+      }
+
       if (conv.pinned) {
         groups.pinned.push(conv);
         return;
@@ -332,6 +339,27 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   onToggleMenu={(id) => setActiveMenuId(activeMenuId === id ? null : id)}
                 />
               )}
+
+              {/* Archived Section */}
+              {groupedConversations.archived.length > 0 && (
+                <HistorySection
+                  title="ARCHIVED"
+                  conversations={groupedConversations.archived}
+                  activeId={activeConversationId}
+                  renamingId={renamingId}
+                  renameValue={renameValue}
+                  activeMenuId={activeMenuId}
+                  onSelect={onSelectConversation}
+                  onRename={handleStartRename}
+                  onSaveRename={handleSaveRename}
+                  onChangeRename={setRenameValue}
+                  onCancelRename={() => setRenamingId(null)}
+                  onArchive={onArchiveConversation}
+                  onDelete={onDeleteConversation}
+                  onTogglePin={onTogglePinConversation}
+                  onToggleMenu={(id) => setActiveMenuId(activeMenuId === id ? null : id)}
+                />
+              )}
             </>
           )}
         </div>
@@ -529,7 +557,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 text-[#4A3026] dark:text-[#EDE1D5] min-h-[36px]"
                   >
                     <Archive className="w-3.5 h-3.5" />
-                    <span>Archive</span>
+                    <span>{conv.archived ? 'Unarchive' : 'Archive'}</span>
                   </button>
 
                   <button

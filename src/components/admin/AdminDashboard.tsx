@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuraSymbol } from '../aura/AuraSymbol';
 import { AI_MODES } from '../../data/modes';
 import { AIModeId, SystemPromptConfig, ModelConfig } from '../../types';
@@ -26,6 +26,64 @@ interface AdminDashboardProps {
   onToggleTheme: () => void;
 }
 
+const DEFAULT_PROMPTS: SystemPromptConfig[] = [
+  {
+    id: 'p-1',
+    modeId: 'developer',
+    title: 'AURA Senior Architect',
+    systemInstruction: AI_MODES.developer.systemPrompt,
+    temperature: 0.3,
+    maxTokens: 4096,
+    status: 'active',
+    version: 3,
+    updatedAt: '2026-09-24'
+  },
+  {
+    id: 'p-2',
+    modeId: 'friendly',
+    title: 'AURA Mindful Companion',
+    systemInstruction: AI_MODES.friendly.systemPrompt,
+    temperature: 0.8,
+    maxTokens: 2048,
+    status: 'active',
+    version: 2,
+    updatedAt: '2026-09-22'
+  },
+  {
+    id: 'p-3',
+    modeId: 'tutor',
+    title: 'AURA Socratic Mentor',
+    systemInstruction: AI_MODES.tutor.systemPrompt,
+    temperature: 0.5,
+    maxTokens: 3072,
+    status: 'active',
+    version: 4,
+    updatedAt: '2026-09-25'
+  },
+  {
+    id: 'p-4',
+    modeId: 'creative',
+    title: 'AURA Literary Muse',
+    systemInstruction: AI_MODES.creative.systemPrompt,
+    temperature: 0.9,
+    maxTokens: 4096,
+    status: 'active',
+    version: 2,
+    updatedAt: '2026-09-21'
+  },
+  {
+    id: 'p-5',
+    modeId: 'professional',
+    title: 'AURA Executive Strategist',
+    systemInstruction: AI_MODES.professional.systemPrompt,
+    temperature: 0.4,
+    maxTokens: 2560,
+    status: 'active',
+    version: 1,
+    updatedAt: '2026-09-20'
+  }
+];
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onBackToChat,
   onOpenLanding,
@@ -34,64 +92,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'conversations' | 'prompts' | 'models' | 'analytics'>('overview');
 
-  // Initial prompt configs
-  const [prompts, setPrompts] = useState<SystemPromptConfig[]>([
-    {
-      id: 'p-1',
-      modeId: 'developer',
-      title: 'AURA Senior Architect',
-      systemInstruction: AI_MODES.developer.systemPrompt,
-      temperature: 0.3,
-      maxTokens: 4096,
-      status: 'active',
-      version: 3,
-      updatedAt: '2026-09-24'
-    },
-    {
-      id: 'p-2',
-      modeId: 'friendly',
-      title: 'AURA Mindful Companion',
-      systemInstruction: AI_MODES.friendly.systemPrompt,
-      temperature: 0.8,
-      maxTokens: 2048,
-      status: 'active',
-      version: 2,
-      updatedAt: '2026-09-22'
-    },
-    {
-      id: 'p-3',
-      modeId: 'tutor',
-      title: 'AURA Socratic Mentor',
-      systemInstruction: AI_MODES.tutor.systemPrompt,
-      temperature: 0.5,
-      maxTokens: 3072,
-      status: 'active',
-      version: 4,
-      updatedAt: '2026-09-25'
-    },
-    {
-      id: 'p-4',
-      modeId: 'creative',
-      title: 'AURA Literary Muse',
-      systemInstruction: AI_MODES.creative.systemPrompt,
-      temperature: 0.9,
-      maxTokens: 4096,
-      status: 'active',
-      version: 2,
-      updatedAt: '2026-09-21'
-    },
-    {
-      id: 'p-5',
-      modeId: 'professional',
-      title: 'AURA Executive Strategist',
-      systemInstruction: AI_MODES.professional.systemPrompt,
-      temperature: 0.4,
-      maxTokens: 2560,
-      status: 'active',
-      version: 1,
-      updatedAt: '2026-09-20'
+  // Initial prompt configs with localStorage persistence
+  const [prompts, setPrompts] = useState<SystemPromptConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('aura_admin_prompts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
     }
-  ]);
+    return DEFAULT_PROMPTS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_admin_prompts', JSON.stringify(prompts));
+    } catch (e) {
+      console.warn('LocalStorage error saving admin prompts:', e);
+    }
+  }, [prompts]);
 
   const [models, setModels] = useState<ModelConfig[]>([
     {

@@ -23,19 +23,26 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { SafeUser } from '../../db/types';
 
 interface LandingPageProps {
   onStartChatting: () => void;
   onOpenAdmin: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  user?: SafeUser | null;
+  onOpenAuth?: () => void;
+  onSignOut?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onStartChatting,
   onOpenAdmin,
   isDarkMode,
-  onToggleTheme
+  onToggleTheme,
+  user,
+  onOpenAuth,
+  onSignOut,
 }) => {
   const [activePreviewMode, setActivePreviewMode] = useState<AIModeId>('developer');
   const [copiedCode, setCopiedCode] = useState(false);
@@ -108,6 +115,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <span className="text-[11px] sm:text-xs font-mono">{isDarkMode ? 'LIGHT' : 'DARK'}</span>
             </button>
+
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-xs font-serif text-[#2B1D17] dark:text-[#FCFAF7] font-medium truncate max-w-[130px]">
+                  {user.profile.displayName || user.email.split('@')[0]}
+                </span>
+                <button
+                  onClick={onSignOut}
+                  className="px-3 py-1.5 rounded-full border border-[#DCC9B8] dark:border-[#3A2921] text-[11px] font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-all min-h-[36px]"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="px-3.5 py-1.5 rounded-full border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#4A3026] dark:text-[#EDE1D5] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] transition-all min-h-[38px]"
+              >
+                Sign in
+              </button>
+            )}
 
             <button
               onClick={onStartChatting}

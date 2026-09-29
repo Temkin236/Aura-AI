@@ -38,6 +38,9 @@ interface ChatSidebarProps {
   onOpenLanding: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  user?: import('../../db/types').SafeUser | null;
+  onOpenAuth?: () => void;
+  onSignOut?: () => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -57,7 +60,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onOpenAdmin,
   onOpenLanding,
   isDarkMode,
-  onToggleTheme
+  onToggleTheme,
+  user,
+  onOpenAuth,
+  onSignOut,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -364,9 +370,43 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </div>
 
-        {/* Bottom Bar: Settings, Admin, Theme Toggle */}
-        <div className="p-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] bg-[#F8F3ED]/90 dark:bg-[#1E1612]/90 space-y-1">
-          <div className="flex items-center justify-between gap-1 px-1 py-1">
+        {/* Bottom Bar: User Session, Settings, Admin, Theme Toggle */}
+        <div className="p-3 border-t border-[#EDE1D5] dark:border-[#2B1D17] bg-[#F8F3ED]/90 dark:bg-[#1E1612]/90 space-y-2">
+          {user ? (
+            <div className="px-2 py-1.5 rounded-xl bg-[#EDE1D5]/40 dark:bg-[#17110E] border border-[#DCC9B8]/40 dark:border-[#3A2921] flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 mr-2">
+                <div className="w-6 h-6 rounded-full bg-[#C7A46A]/20 text-[#C7A46A] flex items-center justify-center text-xs font-serif font-semibold shrink-0">
+                  {(user.profile.displayName || user.email)[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-[#2B1D17] dark:text-[#FCFAF7] truncate">
+                    {user.profile.displayName || user.email.split('@')[0]}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="text-[11px] text-[#8A6756] hover:text-red-500 transition-colors shrink-0"
+                title="Sign out"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div className="px-1">
+              <button
+                onClick={() => {
+                  onOpenAuth?.();
+                  onCloseMobile();
+                }}
+                className="w-full py-1.5 px-3 rounded-xl border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#4A3026] dark:text-[#EDE1D5] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] transition-all text-center"
+              >
+                Sign in to AURA
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-1 px-1">
             <button
               onClick={onToggleTheme}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all min-h-[38px]"

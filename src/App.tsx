@@ -3,11 +3,34 @@ import { LandingPage } from './components/landing/LandingPage';
 import { ChatWorkspace } from './components/chat/ChatWorkspace';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { AuthModal } from './components/auth/AuthModal';
 import { UserSettings } from './types';
+import { SafeUser } from './db/types';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'chat' | 'admin'>('landing');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<SafeUser | null>(null);
+
+  // Load current authenticated user from server session on mount
+  useEffect(() => {
+    fetch('/api/auth/me', { headers: { Accept: 'application/json' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch {}
+    setCurrentUser(null);
+  };
 
   // Settings State
   const [userSettings, setUserSettings] = useState<UserSettings>(() => {
@@ -102,6 +125,9 @@ export default function App() {
           onOpenAdmin={() => setCurrentView('admin')}
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
+          user={currentUser}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onSignOut={handleSignOut}
         />
       )}
 
@@ -113,6 +139,9 @@ export default function App() {
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
           userSettings={userSettings}
+          user={currentUser}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onSignOut={handleSignOut}
         />
       )}
 
@@ -132,6 +161,13 @@ export default function App() {
         settings={userSettings}
         onUpdateSettings={handleUpdateSettings}
         onClearAllConversations={handleClearAllConversations}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={(user) => setCurrentUser(user)}
       />
     </div>
   );

@@ -3,7 +3,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { GoogleGenAI } from '@google/genai';
+import authRouter from './src/routes/auth';
+import adminRouter from './src/routes/admin';
+import conversationsRouter from './src/routes/conversations';
+import { optionalAuth } from './src/middleware/auth';
+import { getConversation, createConversation, createMessage } from './src/db/conversations';
+import { isValidUuid } from './src/auth/service';
 
 dotenv.config();
 
@@ -14,6 +21,7 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '5mb' }));
+app.use(cookieParser(process.env.AUTH_SESSION_SECRET));
 
 // Supported Gemini models allowlist
 export const ALLOWED_MODELS = [
@@ -54,6 +62,27 @@ const chatLimiter = rateLimit({
     retryAfter: 60,
   },
 });
+
+// Rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || '60000', 10),
+  max: process.env.NODE_ENV === 'test' ? 1000 : parseInt(process.env.AUTH_RATE_LIMIT_MAX || '30', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  message: {
+    error: 'Too many authentication attempts. Please try again in a moment.',
+  },
+});
+
+// Authentication routes
+app.use('/api/auth', authLimiter, authRouter);
+
+// Administrative routes
+app.use('/api/admin', adminRouter);
+
+// Authenticated conversation & message routes
+app.use('/api/conversations', conversationsRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -121,12 +150,41 @@ export function resolveTemperature(reqTemp: unknown, mode?: string): number {
 }
 
 // REAL STREAMING ENDPOINT (Server-Sent Events)
-app.post('/api/chat/stream', chatLimiter, async (req: Request, res: Response) => {
-  const { prompt, mode, model, temperature, systemInstruction, history } = req.body;
+app.post('/api/chat/stream', chatLimiter, optionalAuth, async (req: Request, res: Response) => {
+  const { prompt, mode, model, temperature, systemInstruction, history, conversationId } = req.body;
 
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'A valid prompt string is required' });
     return;
+  }
+
+  const activeModel = resolveModel(model);
+  const activeTemp = resolveTemperature(temperature, mode);
+  const sanitizedInstruction =
+    typeof systemInstruction === 'string' && systemInstruction.trim()
+      ? systemInstruction.slice(0, 4000)
+      : 'You are AURA AI, an intelligent, warm, calm, and intellectually rigorous personal companion. Think better. Create freely.';
+
+  // If user is authenticated and conversationId is valid, persist user message
+  if (req.user && conversationId && isValidUuid(conversationId)) {
+    try {
+      const existing = await getConversation(req.user.id, conversationId);
+      if (!existing) {
+        await createConversation(req.user.id, {
+          id: conversationId,
+          title: prompt.slice(0, 36) + (prompt.length > 36 ? '...' : ''),
+          mode: mode || 'developer',
+        });
+      }
+      await createMessage(req.user.id, conversationId, {
+        role: 'user',
+        content: prompt,
+        mode: mode || 'developer',
+        model: activeModel,
+      });
+    } catch (err: any) {
+      console.error('Error persisting user stream message:', err?.message || err);
+    }
   }
 
   // Set SSE Headers
@@ -140,13 +198,6 @@ app.post('/api/chat/stream', chatLimiter, async (req: Request, res: Response) =>
   req.on('close', () => {
     isAborted = true;
   });
-
-  const activeModel = resolveModel(model);
-  const activeTemp = resolveTemperature(temperature, mode);
-  const sanitizedInstruction =
-    typeof systemInstruction === 'string' && systemInstruction.trim()
-      ? systemInstruction.slice(0, 4000)
-      : 'You are AURA AI, an intelligent, warm, calm, and intellectually rigorous personal companion. Think better. Create freely.';
 
   // If Gemini client is available, stream real Gemini chunks
   if (ai) {
@@ -166,10 +217,13 @@ app.post('/api/chat/stream', chatLimiter, async (req: Request, res: Response) =>
         },
       });
 
+      let accumulatedStreamText = '';
+
       for await (const chunk of responseStream) {
         if (isAborted) break;
         const text = chunk.text || '';
         if (text) {
+          accumulatedStreamText += text;
           res.write(
             `data: ${JSON.stringify({
               text,
@@ -181,6 +235,18 @@ app.post('/api/chat/stream', chatLimiter, async (req: Request, res: Response) =>
       }
 
       if (!isAborted) {
+        if (req.user && conversationId && isValidUuid(conversationId) && accumulatedStreamText.trim()) {
+          try {
+            await createMessage(req.user.id, conversationId, {
+              role: 'assistant',
+              content: accumulatedStreamText,
+              mode: mode || 'developer',
+              model: activeModel,
+            });
+          } catch (e: any) {
+            console.error('Error persisting assistant stream message:', e?.message || e);
+          }
+        }
         res.write('data: [DONE]\n\n');
         res.end();
       }
@@ -202,13 +268,26 @@ app.post('/api/chat/stream', chatLimiter, async (req: Request, res: Response) =>
 
   // Fallback stream generator (Offline / No Key / Fallback Mode)
   const fallbackFullText = generateAuraResponse(prompt, mode || 'developer');
-  await streamLocalFallback(res, fallbackFullText, () => isAborted);
+  await streamLocalFallback(res, fallbackFullText, () => isAborted, async () => {
+    if (req.user && conversationId && isValidUuid(conversationId) && fallbackFullText.trim()) {
+      try {
+        await createMessage(req.user.id, conversationId, {
+          role: 'assistant',
+          content: fallbackFullText,
+          mode: mode || 'developer',
+          model: 'aura-local-fallback',
+        });
+      } catch (e: any) {
+        console.error('Error persisting fallback stream message:', e?.message || e);
+      }
+    }
+  });
 });
 
 // STANDARD NON-STREAMING ENDPOINT
-app.post('/api/chat', chatLimiter, async (req: Request, res: Response) => {
+app.post('/api/chat', chatLimiter, optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { prompt, mode, model, temperature, systemInstruction, history } = req.body;
+    const { prompt, mode, model, temperature, systemInstruction, history, conversationId } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       res.status(400).json({ error: 'A valid prompt string is required' });
@@ -222,8 +301,42 @@ app.post('/api/chat', chatLimiter, async (req: Request, res: Response) => {
         ? systemInstruction.slice(0, 4000)
         : 'You are AURA AI, an intelligent, warm, calm, and intellectually rigorous personal companion. Think better. Create freely.';
 
+    // If user is authenticated and conversationId is valid, persist user message
+    if (req.user && conversationId && isValidUuid(conversationId)) {
+      try {
+        const existing = await getConversation(req.user.id, conversationId);
+        if (!existing) {
+          await createConversation(req.user.id, {
+            id: conversationId,
+            title: prompt.slice(0, 36) + (prompt.length > 36 ? '...' : ''),
+            mode: mode || 'developer',
+          });
+        }
+        await createMessage(req.user.id, conversationId, {
+          role: 'user',
+          content: prompt,
+          mode: mode || 'developer',
+          model: activeModel,
+        });
+      } catch (err: any) {
+        console.error('Error persisting user message in /api/chat:', err?.message || err);
+      }
+    }
+
     if (!ai) {
       const fallback = generateAuraResponse(prompt, mode || 'developer');
+      if (req.user && conversationId && isValidUuid(conversationId) && fallback.trim()) {
+        try {
+          await createMessage(req.user.id, conversationId, {
+            role: 'assistant',
+            content: fallback,
+            mode: mode || 'developer',
+            model: 'aura-local-fallback',
+          });
+        } catch (err: any) {
+          console.error('Error persisting fallback message in /api/chat:', err?.message || err);
+        }
+      }
       res.json({
         text: fallback,
         model: 'aura-local-fallback',
@@ -248,6 +361,20 @@ app.post('/api/chat', chatLimiter, async (req: Request, res: Response) => {
     });
 
     const replyText = response.text || '';
+
+    if (req.user && conversationId && isValidUuid(conversationId) && replyText.trim()) {
+      try {
+        await createMessage(req.user.id, conversationId, {
+          role: 'assistant',
+          content: replyText,
+          mode: mode || 'developer',
+          model: activeModel,
+        });
+      } catch (err: any) {
+        console.error('Error persisting assistant message in /api/chat:', err?.message || err);
+      }
+    }
+
     res.json({
       text: replyText,
       model: activeModel,
@@ -256,6 +383,18 @@ app.post('/api/chat', chatLimiter, async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Server Gemini Error:', error?.message || error);
     const fallback = generateAuraResponse(req.body.prompt || '', req.body.mode || 'developer');
+    if (req.user && req.body.conversationId && isValidUuid(req.body.conversationId) && fallback.trim()) {
+      try {
+        await createMessage(req.user.id, req.body.conversationId, {
+          role: 'assistant',
+          content: fallback,
+          mode: req.body.mode || 'developer',
+          model: 'aura-local-fallback',
+        });
+      } catch (err: any) {
+        console.error('Error persisting fallback error message:', err?.message || err);
+      }
+    }
     res.json({
       text: fallback,
       model: 'aura-local-fallback',
@@ -266,7 +405,12 @@ app.post('/api/chat', chatLimiter, async (req: Request, res: Response) => {
 });
 
 // Helper for streaming local fallback responses smoothly
-async function streamLocalFallback(res: Response, fullText: string, isAborted: () => boolean) {
+async function streamLocalFallback(
+  res: Response,
+  fullText: string,
+  isAborted: () => boolean,
+  onComplete?: () => Promise<void>
+) {
   const words = fullText.split(' ');
   const chunkSize = 3;
 
@@ -285,6 +429,13 @@ async function streamLocalFallback(res: Response, fullText: string, isAborted: (
   }
 
   if (!isAborted()) {
+    if (onComplete) {
+      try {
+        await onComplete();
+      } catch (err: any) {
+        console.error('Error in stream onComplete callback:', err?.message || err);
+      }
+    }
     res.write('data: [DONE]\n\n');
     res.end();
   }

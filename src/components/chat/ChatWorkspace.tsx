@@ -23,6 +23,20 @@ interface ChatWorkspaceProps {
   isDarkMode: boolean;
   onToggleTheme: () => void;
   userSettings: UserSettings;
+  user?: import('../../db/types').SafeUser | null;
+  onOpenAuth?: () => void;
+  onSignOut?: () => void;
+}
+
+function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
@@ -31,7 +45,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   onOpenLanding,
   isDarkMode,
   onToggleTheme,
-  userSettings
+  userSettings,
+  user,
+  onOpenAuth,
+  onSignOut,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     try {
@@ -91,18 +108,116 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }
   }, [userSettings.defaultMode]);
 
-  // Debounced safe local storage sync (respects userSettings.saveHistory)
+  // Load server-side conversations when user is authenticated, or reset to local storage for anonymous
   useEffect(() => {
+    if (user?.id) {
+      let isMounted = true;
+      fetch('/api/conversations', { headers: { Accept: 'application/json' } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!isMounted) return;
+          if (data?.conversations) {
+            const serverConvs: Conversation[] = data.conversations.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              mode: c.mode as AIModeId,
+              createdAt: new Date(c.createdAt).getTime(),
+              updatedAt: new Date(c.updatedAt).getTime(),
+              pinned: c.pinned,
+              archived: c.archived,
+              messageCount: c.messageCount || 0,
+            }));
+            setConversations(serverConvs);
+            if (serverConvs.length > 0) {
+              const firstId = serverConvs[0].id;
+              setActiveConversationId(firstId);
+              fetch(`/api/conversations/${firstId}/messages`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((mdata) => {
+                  if (!isMounted) return;
+                  if (mdata?.messages) {
+                    const loadedMsgs: Message[] = mdata.messages.map((m: any) => ({
+                      id: m.id,
+                      conversationId: m.conversationId,
+                      role: m.role,
+                      content: m.content,
+                      timestamp: new Date(m.createdAt).getTime(),
+                      mode: m.mode,
+                      model: m.model,
+                    }));
+                    setMessagesMap({ [firstId]: loadedMsgs });
+                  }
+                })
+                .catch(() => {});
+            } else {
+              setActiveConversationId(null);
+              setMessagesMap({});
+            }
+          }
+        })
+        .catch(() => {});
+
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      // Anonymous user: restore from localStorage
+      try {
+        const savedConvs = localStorage.getItem('aura_conversations');
+        if (savedConvs) {
+          const parsed = JSON.parse(savedConvs);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setConversations(parsed);
+            setActiveConversationId(parsed[0].id);
+          } else {
+            setConversations(INITIAL_CONVERSATIONS);
+            setActiveConversationId('conv-1');
+          }
+        } else {
+          setConversations(INITIAL_CONVERSATIONS);
+          setActiveConversationId('conv-1');
+        }
+
+        const savedMsgs = localStorage.getItem('aura_messages');
+        if (savedMsgs) {
+          const parsed = JSON.parse(savedMsgs);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            setMessagesMap(parsed);
+            return;
+          }
+        }
+      } catch {}
+
+      // Initial seed fallback
+      const map: Record<string, Message[]> = {};
+      Object.entries(INITIAL_MESSAGES_MAP).forEach(([id, msgs]) => {
+        map[id] = msgs.map((m, idx) => ({
+          id: `msg-${id}-${idx}`,
+          conversationId: id,
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+          model: m.role === 'assistant' ? 'aura-local-fallback' : undefined,
+          isFallback: m.role === 'assistant' ? true : undefined,
+        }));
+      });
+      setMessagesMap(map);
+    }
+  }, [user?.id]);
+
+  // Debounced safe local storage sync (only for anonymous users, respects userSettings.saveHistory)
+  useEffect(() => {
+    if (user) return; // Authenticated users use PostgreSQL as single source of truth
     if (userSettings.saveHistory === false) return;
     try {
       localStorage.setItem('aura_conversations', JSON.stringify(conversations));
     } catch (e) {
       console.warn('LocalStorage quota or write error:', e);
     }
-  }, [conversations, userSettings.saveHistory]);
+  }, [conversations, userSettings.saveHistory, user]);
 
   useEffect(() => {
-    // Skip saving intermediate states during active generation or if saveHistory is disabled
+    if (user) return; // Authenticated users use PostgreSQL as single source of truth
     if (isGenerating || userSettings.saveHistory === false) return;
 
     const timer = setTimeout(() => {
@@ -114,7 +229,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [messagesMap, isGenerating, userSettings.saveHistory]);
+  }, [messagesMap, isGenerating, userSettings.saveHistory, user]);
 
   // Current active conversation
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
@@ -132,9 +247,34 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentMessages, isGenerating]);
 
+  const handleSelectConversation = (id: string) => {
+    setActiveConversationId(id);
+    setMobileDrawerOpen(false);
+
+    if (user?.id && (!messagesMap[id] || messagesMap[id].length === 0)) {
+      fetch(`/api/conversations/${id}/messages`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.messages) {
+            const loadedMsgs: Message[] = data.messages.map((m: any) => ({
+              id: m.id,
+              conversationId: m.conversationId,
+              role: m.role,
+              content: m.content,
+              timestamp: new Date(m.createdAt).getTime(),
+              mode: m.mode,
+              model: m.model,
+            }));
+            setMessagesMap((prev) => ({ ...prev, [id]: loadedMsgs }));
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
   // Handle New Conversation
   const handleNewConversation = (initialMode: AIModeId = currentMode) => {
-    const newId = `conv-${Date.now()}`;
+    const newId = user ? generateUuid() : `conv-${Date.now()}`;
     const newConv: Conversation = {
       id: newId,
       title: 'New conversation',
@@ -148,6 +288,18 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     setActiveConversationId(newId);
     setMessagesMap((prev) => ({ ...prev, [newId]: [] }));
     setMobileDrawerOpen(false);
+
+    if (user) {
+      fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newId,
+          title: 'New conversation',
+          mode: initialMode,
+        }),
+      }).catch((e) => console.error('Failed to create conversation on server:', e));
+    }
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -160,7 +312,17 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
     if (activeConversationId === id) {
       const remaining = conversations.filter((c) => c.id !== id);
-      setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
+      const nextActive = remaining.length > 0 ? remaining[0].id : null;
+      setActiveConversationId(nextActive);
+      if (nextActive && user && (!messagesMap[nextActive] || messagesMap[nextActive].length === 0)) {
+        handleSelectConversation(nextActive);
+      }
+    }
+
+    if (user) {
+      fetch(`/api/conversations/${id}`, { method: 'DELETE' }).catch((e) =>
+        console.error('Failed to delete conversation on server:', e)
+      );
     }
   };
 
@@ -168,18 +330,46 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, title: newTitle, updatedAt: Date.now() } : c))
     );
+
+    if (user) {
+      fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      }).catch((e) => console.error('Failed to update title on server:', e));
+    }
   };
 
   const handleArchiveConversation = (id: string) => {
+    const target = conversations.find((c) => c.id === id);
+    const nextArchived = target ? !target.archived : true;
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, archived: !c.archived } : c))
+      prev.map((c) => (c.id === id ? { ...c, archived: nextArchived } : c))
     );
+
+    if (user) {
+      fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: nextArchived }),
+      }).catch((e) => console.error('Failed to update archive status on server:', e));
+    }
   };
 
   const handleTogglePin = (id: string) => {
+    const target = conversations.find((c) => c.id === id);
+    const nextPinned = target ? !target.pinned : true;
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
+      prev.map((c) => (c.id === id ? { ...c, pinned: nextPinned } : c))
     );
+
+    if (user) {
+      fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: nextPinned }),
+      }).catch((e) => console.error('Failed to update pin status on server:', e));
+    }
   };
 
   const handleSendMessage = async (text: string, modeToUse: AIModeId) => {
@@ -187,7 +377,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
     // If no active conversation, create one
     if (!convId) {
-      convId = `conv-${Date.now()}`;
+      convId = user ? generateUuid() : `conv-${Date.now()}`;
       const newConv: Conversation = {
         id: convId,
         title: text.slice(0, 32) + (text.length > 32 ? '...' : ''),
@@ -199,12 +389,25 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       setConversations((prev) => [newConv, ...prev]);
       setActiveConversationId(convId);
       setMessagesMap((prev) => ({ ...prev, [convId as string]: [] }));
+
+      if (user) {
+        fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: convId,
+            title: newConv.title,
+            mode: modeToUse,
+          }),
+        }).catch(() => {});
+      }
     }
 
     const currentId = convId as string;
+    const msgId = user ? generateUuid() : `msg-${Date.now()}`;
 
     const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: msgId,
       conversationId: currentId,
       role: 'user',
       content: text,
@@ -212,7 +415,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       mode: modeToUse
     };
 
-    const assistantMessageId = `msg-ai-${Date.now()}`;
+    const assistantMessageId = user ? generateUuid() : `msg-ai-${Date.now()}`;
     const initialAssistantMessage: Message = {
       id: assistantMessageId,
       conversationId: currentId,
@@ -240,6 +443,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       setConversations((prev) =>
         prev.map((c) => (c.id === currentId ? { ...c, title: generatedTitle, messageCount: c.messageCount + 2 } : c))
       );
+      if (user) {
+        fetch(`/api/conversations/${currentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: generatedTitle }),
+        }).catch(() => {});
+      }
     }
 
     setIsGenerating(true);
@@ -249,7 +459,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       const modeConfig = AI_MODES[modeToUse];
       const conversationHistory = (messagesMap[currentId] || []).concat(userMessage);
 
-      // Call real server-side streaming SSE endpoint
+      // Call real server-side streaming SSE endpoint with conversationId for persistence
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -260,6 +470,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           model: userSettings.model || 'gemini-2.5-flash',
           temperature: userSettings.temperature ?? modeConfig.temperature,
           systemInstruction: modeConfig.systemPrompt,
+          conversationId: currentId,
           history: conversationHistory.slice(-8).map((m) => ({
             role: m.role === 'assistant' ? 'model' : 'user',
             content: m.content
@@ -456,6 +667,9 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         onOpenLanding={onOpenLanding}
         isDarkMode={isDarkMode}
         onToggleTheme={onToggleTheme}
+        user={user}
+        onOpenAuth={onOpenAuth}
+        onSignOut={onSignOut}
       />
 
       {/* Main Workspace Frame */}

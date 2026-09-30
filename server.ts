@@ -11,6 +11,8 @@ import conversationsRouter from './src/routes/conversations';
 import { optionalAuth } from './src/middleware/auth';
 import { getConversation, createConversation, createMessage } from './src/db/conversations';
 import { isValidUuid } from './src/auth/service';
+import { runMigrations } from './src/db/migrate';
+import { getDatabaseUrl, checkDatabaseConnection } from './src/db/index';
 
 dotenv.config();
 
@@ -85,12 +87,23 @@ app.use('/api/admin', adminRouter);
 app.use('/api/conversations', conversationsRouter);
 
 // Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
+app.get('/api/health', async (_req: Request, res: Response) => {
+  const dbConfigured = !!getDatabaseUrl();
+  let dbConnected = false;
+  if (dbConfigured) {
+    const dbStatus = await checkDatabaseConnection().catch(() => ({ connected: false }));
+    dbConnected = dbStatus.connected;
+  }
+
   res.json({
     status: 'ok',
     hasApiKey: !!process.env.GEMINI_API_KEY,
     defaultModel: DEFAULT_GEMINI_MODEL,
     allowedModels: ALLOWED_MODELS,
+    database: {
+      configured: dbConfigured,
+      connected: dbConnected,
+    },
     timestamp: new Date().toISOString(),
   });
 });
@@ -516,6 +529,25 @@ Let's begin by isolating what matters most to you in this outcome. Where would y
 
 // Development vs Production Setup
 async function startServer() {
+  // Auto-run pending database migrations if DATABASE_URL is configured
+  if (getDatabaseUrl()) {
+    try {
+      console.log('📦 Checking PostgreSQL migrations...');
+      const migrationResult = await runMigrations();
+      if (migrationResult.success) {
+        if (migrationResult.applied.length > 0) {
+          console.log(`✓ Applied ${migrationResult.applied.length} pending migration(s):`, migrationResult.applied.join(', '));
+        } else {
+          console.log('✓ Database schema is up to date.');
+        }
+      } else {
+        console.warn('⚠️ Database migration warning:', migrationResult.error);
+      }
+    } catch (dbErr: any) {
+      console.warn('⚠️ Could not connect to PostgreSQL on startup:', dbErr?.message || dbErr);
+    }
+  }
+
   if (process.env.NODE_ENV === 'production') {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));

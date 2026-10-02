@@ -24,6 +24,7 @@ interface ChatWorkspaceProps {
   onToggleTheme: () => void;
   userSettings: UserSettings;
   user?: import('../../db/types').SafeUser | null;
+  isAuthLoading?: boolean;
   onOpenAuth?: () => void;
   onSignOut?: () => void;
 }
@@ -47,10 +48,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   onToggleTheme,
   userSettings,
   user,
+  isAuthLoading = false,
   onOpenAuth,
   onSignOut,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_CONVERSATIONS;
     try {
       const saved = localStorage.getItem('aura_conversations');
       if (saved) {
@@ -100,6 +103,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeMessageFetchIdRef = useRef<string | null>(null);
 
   // Sync mode if user updates defaultMode setting and active conversation is new
   useEffect(() => {
@@ -110,10 +114,20 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
   // Load server-side conversations when user is authenticated, or reset to local storage for anonymous
   useEffect(() => {
+    if (isAuthLoading) return;
+
+    let isMounted = true;
+
     if (user?.id) {
-      let isMounted = true;
+      // Authenticated mode: PostgreSQL is authoritative
       fetch('/api/conversations', { headers: { Accept: 'application/json' } })
-        .then((res) => (res.ok ? res.json() : null))
+        .then((res) => {
+          if (res.status === 401) {
+            onSignOut?.();
+            return null;
+          }
+          return res.ok ? res.json() : null;
+        })
         .then((data) => {
           if (!isMounted) return;
           if (data?.conversations) {
@@ -128,13 +142,22 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               messageCount: c.messageCount || 0,
             }));
             setConversations(serverConvs);
+
             if (serverConvs.length > 0) {
               const firstId = serverConvs[0].id;
               setActiveConversationId(firstId);
+              activeMessageFetchIdRef.current = firstId;
+
               fetch(`/api/conversations/${firstId}/messages`)
-                .then((r) => (r.ok ? r.json() : null))
+                .then((r) => {
+                  if (r.status === 401) {
+                    onSignOut?.();
+                    return null;
+                  }
+                  return r.ok ? r.json() : null;
+                })
                 .then((mdata) => {
-                  if (!isMounted) return;
+                  if (!isMounted || activeMessageFetchIdRef.current !== firstId) return;
                   if (mdata?.messages) {
                     const loadedMsgs: Message[] = mdata.messages.map((m: any) => ({
                       id: m.id,
@@ -203,21 +226,21 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       });
       setMessagesMap(map);
     }
-  }, [user?.id]);
+  }, [user?.id, isAuthLoading]);
 
   // Debounced safe local storage sync (only for anonymous users, respects userSettings.saveHistory)
   useEffect(() => {
-    if (user) return; // Authenticated users use PostgreSQL as single source of truth
+    if (user || isAuthLoading) return; // Authenticated users use PostgreSQL as single source of truth
     if (userSettings.saveHistory === false) return;
     try {
       localStorage.setItem('aura_conversations', JSON.stringify(conversations));
     } catch (e) {
       console.warn('LocalStorage quota or write error:', e);
     }
-  }, [conversations, userSettings.saveHistory, user]);
+  }, [conversations, userSettings.saveHistory, user, isAuthLoading]);
 
   useEffect(() => {
-    if (user) return; // Authenticated users use PostgreSQL as single source of truth
+    if (user || isAuthLoading) return; // Authenticated users use PostgreSQL as single source of truth
     if (isGenerating || userSettings.saveHistory === false) return;
 
     const timer = setTimeout(() => {
@@ -229,7 +252,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [messagesMap, isGenerating, userSettings.saveHistory, user]);
+  }, [messagesMap, isGenerating, userSettings.saveHistory, user, isAuthLoading]);
 
   // Current active conversation
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
@@ -251,55 +274,96 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     setActiveConversationId(id);
     setMobileDrawerOpen(false);
 
-    if (user?.id && (!messagesMap[id] || messagesMap[id].length === 0)) {
-      fetch(`/api/conversations/${id}/messages`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.messages) {
-            const loadedMsgs: Message[] = data.messages.map((m: any) => ({
-              id: m.id,
-              conversationId: m.conversationId,
-              role: m.role,
-              content: m.content,
-              timestamp: new Date(m.createdAt).getTime(),
-              mode: m.mode,
-              model: m.model,
-            }));
-            setMessagesMap((prev) => ({ ...prev, [id]: loadedMsgs }));
-          }
-        })
-        .catch(() => {});
+    if (user?.id) {
+      if (!messagesMap[id] || messagesMap[id].length === 0) {
+        activeMessageFetchIdRef.current = id;
+        fetch(`/api/conversations/${id}/messages`)
+          .then((r) => {
+            if (r.status === 401) {
+              onSignOut?.();
+              return null;
+            }
+            return r.ok ? r.json() : null;
+          })
+          .then((data) => {
+            if (activeMessageFetchIdRef.current !== id) return; // Prevent race conditions
+            if (data?.messages) {
+              const loadedMsgs: Message[] = data.messages.map((m: any) => ({
+                id: m.id,
+                conversationId: m.conversationId,
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.createdAt).getTime(),
+                mode: m.mode,
+                model: m.model,
+              }));
+              setMessagesMap((prev) => ({ ...prev, [id]: loadedMsgs }));
+            }
+          })
+          .catch(() => {});
+      }
     }
   };
 
   // Handle New Conversation
-  const handleNewConversation = (initialMode: AIModeId = currentMode) => {
-    const newId = user ? generateUuid() : `conv-${Date.now()}`;
+  const handleNewConversation = async (initialMode: AIModeId = currentMode) => {
+    setMobileDrawerOpen(false);
+
+    if (user?.id) {
+      try {
+        const res = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'New conversation',
+            mode: initialMode,
+          }),
+        });
+
+        if (res.status === 401) {
+          onSignOut?.();
+          return;
+        }
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.conversation) {
+            const c = data.conversation;
+            const newConv: Conversation = {
+              id: c.id,
+              title: c.title,
+              mode: (c.mode as AIModeId) || initialMode,
+              createdAt: new Date(c.createdAt).getTime(),
+              updatedAt: new Date(c.updatedAt).getTime(),
+              pinned: c.pinned ?? false,
+              archived: c.archived ?? false,
+              messageCount: 0,
+            };
+            setConversations((prev) => [newConv, ...prev.filter((item) => item.id !== newConv.id)]);
+            setActiveConversationId(newConv.id);
+            setMessagesMap((prev) => ({ ...prev, [newConv.id]: [] }));
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to create conversation on server:', e);
+      }
+    }
+
+    // Anonymous fallback:
+    const newId = `conv-${Date.now()}`;
     const newConv: Conversation = {
       id: newId,
       title: 'New conversation',
       mode: initialMode,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      messageCount: 0
+      messageCount: 0,
     };
 
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
     setMessagesMap((prev) => ({ ...prev, [newId]: [] }));
-    setMobileDrawerOpen(false);
-
-    if (user) {
-      fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: newId,
-          title: 'New conversation',
-          mode: initialMode,
-        }),
-      }).catch((e) => console.error('Failed to create conversation on server:', e));
-    }
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -314,29 +378,38 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       const remaining = conversations.filter((c) => c.id !== id);
       const nextActive = remaining.length > 0 ? remaining[0].id : null;
       setActiveConversationId(nextActive);
-      if (nextActive && user && (!messagesMap[nextActive] || messagesMap[nextActive].length === 0)) {
+      if (nextActive && user?.id && (!messagesMap[nextActive] || messagesMap[nextActive].length === 0)) {
         handleSelectConversation(nextActive);
       }
     }
 
-    if (user) {
-      fetch(`/api/conversations/${id}`, { method: 'DELETE' }).catch((e) =>
-        console.error('Failed to delete conversation on server:', e)
-      );
+    if (user?.id) {
+      fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+        .then((r) => {
+          if (r.status === 401) onSignOut?.();
+        })
+        .catch((e) => console.error('Failed to delete conversation on server:', e));
     }
   };
 
   const handleRenameConversation = (id: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title: newTitle, updatedAt: Date.now() } : c))
+      prev.map((c) => (c.id === id ? { ...c, title: trimmed, updatedAt: Date.now() } : c))
     );
 
-    if (user) {
+    if (user?.id) {
       fetch(`/api/conversations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle }),
-      }).catch((e) => console.error('Failed to update title on server:', e));
+        body: JSON.stringify({ title: trimmed }),
+      })
+        .then((r) => {
+          if (r.status === 401) onSignOut?.();
+        })
+        .catch((e) => console.error('Failed to update title on server:', e));
     }
   };
 
@@ -347,12 +420,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       prev.map((c) => (c.id === id ? { ...c, archived: nextArchived } : c))
     );
 
-    if (user) {
+    if (user?.id) {
       fetch(`/api/conversations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: nextArchived }),
-      }).catch((e) => console.error('Failed to update archive status on server:', e));
+      })
+        .then((r) => {
+          if (r.status === 401) onSignOut?.();
+        })
+        .catch((e) => console.error('Failed to update archive status on server:', e));
     }
   };
 
@@ -363,12 +440,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       prev.map((c) => (c.id === id ? { ...c, pinned: nextPinned } : c))
     );
 
-    if (user) {
+    if (user?.id) {
       fetch(`/api/conversations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pinned: nextPinned }),
-      }).catch((e) => console.error('Failed to update pin status on server:', e));
+      })
+        .then((r) => {
+          if (r.status === 401) onSignOut?.();
+        })
+        .catch((e) => console.error('Failed to update pin status on server:', e));
     }
   };
 
@@ -380,17 +461,17 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       convId = user ? generateUuid() : `conv-${Date.now()}`;
       const newConv: Conversation = {
         id: convId,
-        title: text.slice(0, 32) + (text.length > 32 ? '...' : ''),
+        title: text.slice(0, 36) + (text.length > 36 ? '...' : ''),
         mode: modeToUse,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        messageCount: 1
+        messageCount: 1,
       };
       setConversations((prev) => [newConv, ...prev]);
       setActiveConversationId(convId);
       setMessagesMap((prev) => ({ ...prev, [convId as string]: [] }));
 
-      if (user) {
+      if (user?.id) {
         fetch('/api/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -412,7 +493,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       role: 'user',
       content: text,
       timestamp: Date.now(),
-      mode: modeToUse
+      mode: modeToUse,
     };
 
     const assistantMessageId = user ? generateUuid() : `msg-ai-${Date.now()}`;
@@ -423,16 +504,32 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       content: '',
       timestamp: Date.now(),
       mode: modeToUse,
-      isStreaming: true
+      isStreaming: true,
     };
 
     // Update state with user message and streaming placeholder
     setMessagesMap((prev) => ({
       ...prev,
-      [currentId]: [...(prev[currentId] || []), userMessage, initialAssistantMessage]
+      [currentId]: [...(prev[currentId] || []), userMessage, initialAssistantMessage],
     }));
 
-    // Update conversation title if default and autoTitle is enabled
+    // Update conversation metadata
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === currentId
+          ? {
+              ...c,
+              updatedAt: Date.now(),
+              messageCount: (c.messageCount || 0) + 2,
+              title:
+                (c.title === 'New conversation' || c.messageCount === 0) && userSettings.autoTitle !== false
+                  ? text.slice(0, 36) + (text.length > 36 ? '...' : '')
+                  : c.title,
+            }
+          : c
+      )
+    );
+
     const currentConv = conversations.find((c) => c.id === currentId);
     if (
       currentConv &&
@@ -440,10 +537,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       userSettings.autoTitle !== false
     ) {
       const generatedTitle = text.slice(0, 36) + (text.length > 36 ? '...' : '');
-      setConversations((prev) =>
-        prev.map((c) => (c.id === currentId ? { ...c, title: generatedTitle, messageCount: c.messageCount + 2 } : c))
-      );
-      if (user) {
+      if (user?.id) {
         fetch(`/api/conversations/${currentId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

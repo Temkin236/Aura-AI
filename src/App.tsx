@@ -12,6 +12,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<SafeUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
   // Load current authenticated user from server session on mount
   useEffect(() => {
@@ -20,9 +21,16 @@ export default function App() {
       .then((data) => {
         if (data?.user) {
           setCurrentUser(data.user);
+        } else {
+          setCurrentUser(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        setIsAuthLoading(false);
+      });
   }, []);
 
   const handleSignOut = async () => {
@@ -140,6 +148,7 @@ export default function App() {
           onToggleTheme={toggleTheme}
           userSettings={userSettings}
           user={currentUser}
+          isAuthLoading={isAuthLoading}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onSignOut={handleSignOut}
         />
@@ -167,7 +176,10 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={(user) => setCurrentUser(user)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthLoading(false);
+        }}
       />
     </div>
   );

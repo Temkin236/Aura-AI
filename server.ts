@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import authRouter from './src/routes/auth';
 import adminRouter from './src/routes/admin';
 import conversationsRouter from './src/routes/conversations';
+import settingsRouter from './src/routes/settings';
 import { optionalAuth } from './src/middleware/auth';
 import { getConversation, createConversation, createMessage } from './src/db/conversations';
 import { isValidUuid } from './src/auth/service';
@@ -85,6 +86,9 @@ app.use('/api/admin', adminRouter);
 
 // Authenticated conversation & message routes
 app.use('/api/conversations', conversationsRouter);
+
+// Authenticated settings routes
+app.use('/api/settings', settingsRouter);
 
 // Health check endpoint
 app.get('/api/health', async (_req: Request, res: Response) => {

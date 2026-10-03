@@ -33,40 +33,96 @@ export default function App() {
       });
   }, []);
 
+  const DEFAULT_SETTINGS: UserSettings = {
+    theme: 'light',
+    defaultMode: 'developer',
+    model: 'gemini-2.5-flash',
+    temperature: 0.7,
+    saveHistory: true,
+    autoTitle: true,
+    streamResponses: true,
+    soundEffects: false,
+  };
+
+  const getLocalSettings = (): UserSettings => {
+    if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+    try {
+      const saved = localStorage.getItem('aura_settings');
+      if (saved) {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      }
+    } catch {}
+    return DEFAULT_SETTINGS;
+  };
+
   const handleSignOut = async () => {
     try {
       await fetch('/api/auth/signout', { method: 'POST' });
     } catch {}
     setCurrentUser(null);
+    const anonSettings = getLocalSettings();
+    setUserSettings(anonSettings);
+    applyTheme(anonSettings.theme);
   };
 
   // Settings State
-  const [userSettings, setUserSettings] = useState<UserSettings>(() => {
-    const saved = localStorage.getItem('aura_settings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        // fallback
-      }
+  const [userSettings, setUserSettings] = useState<UserSettings>(getLocalSettings);
+
+  const applyTheme = (theme: 'light' | 'dark' | 'system') => {
+    if (theme === 'dark') {
+      setIsDarkMode(true);
+    } else if (theme === 'light') {
+      setIsDarkMode(false);
+    } else {
+      const matchesDark =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(matchesDark);
     }
-    return {
-      theme: 'light',
-      defaultMode: 'developer',
-      model: 'gemini-2.5-flash',
-      temperature: 0.7,
-      saveHistory: true,
-      autoTitle: true,
-      streamResponses: true,
-      soundEffects: false,
-    };
-  });
+  };
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (userSettings.theme === 'dark') return true;
-    if (userSettings.theme === 'light') return false;
-    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = getLocalSettings();
+    if (initial.theme === 'dark') return true;
+    if (initial.theme === 'light') return false;
+    return (
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    );
   });
+
+  // Reconcile settings from PostgreSQL when authenticated user changes
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (currentUser?.id) {
+      // Authenticated user: fetch from PostgreSQL
+      fetch('/api/settings', { headers: { Accept: 'application/json' } })
+        .then((res) => {
+          if (res.status === 401) {
+            handleSignOut();
+            return null;
+          }
+          return res.ok ? res.json() : null;
+        })
+        .then((data) => {
+          if (data?.settings) {
+            setUserSettings(data.settings);
+            applyTheme(data.settings.theme);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load cloud settings:', err);
+        });
+    } else {
+      // Anonymous user: restore from localStorage
+      const anonSettings = getLocalSettings();
+      setUserSettings(anonSettings);
+      applyTheme(anonSettings.theme);
+    }
+  }, [currentUser?.id, isAuthLoading]);
 
   // Listen to system theme changes when theme is set to 'system'
   useEffect(() => {
@@ -90,32 +146,53 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Sync settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('aura_settings', JSON.stringify(userSettings));
-  }, [userSettings]);
-
   const toggleTheme = () => {
     const nextDark = !isDarkMode;
-    setIsDarkMode(nextDark);
-    setUserSettings((prev) => ({
-      ...prev,
-      theme: nextDark ? 'dark' : 'light',
-    }));
+    const nextTheme = nextDark ? 'dark' : 'light';
+    handleUpdateSettings({ theme: nextTheme });
   };
 
   const handleUpdateSettings = (newSettings: Partial<UserSettings>) => {
     setUserSettings((prev) => {
       const updated = { ...prev, ...newSettings };
       if (newSettings.theme) {
-        if (newSettings.theme === 'dark') setIsDarkMode(true);
-        else if (newSettings.theme === 'light') setIsDarkMode(false);
-        else {
-          setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
-        }
+        applyTheme(newSettings.theme);
       }
       return updated;
     });
+
+    if (currentUser?.id) {
+      // Authenticated user: persist to PostgreSQL
+      fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings),
+      })
+        .then((res) => {
+          if (res.status === 401) {
+            handleSignOut();
+            return null;
+          }
+          return res.ok ? res.json() : null;
+        })
+        .then((data) => {
+          if (data?.settings) {
+            setUserSettings(data.settings);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to save settings to cloud:', err);
+        });
+    } else {
+      // Anonymous user: persist to localStorage
+      try {
+        const currentLocal = getLocalSettings();
+        const updatedLocal = { ...currentLocal, ...newSettings };
+        localStorage.setItem('aura_settings', JSON.stringify(updatedLocal));
+      } catch (err) {
+        console.warn('LocalStorage error saving settings:', err);
+      }
+    }
   };
 
   const handleClearAllConversations = () => {

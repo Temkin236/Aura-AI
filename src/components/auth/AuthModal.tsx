@@ -31,28 +31,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/signin';
       const bodyData =
         mode === 'signup'
-          ? { email, password, displayName: displayName.trim() || undefined }
-          : { email, password };
+          ? { email: email.trim(), password, displayName: displayName.trim() || undefined }
+          : { email: email.trim(), password };
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
         body: JSON.stringify(bodyData),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed. Please check your credentials.');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // In case the response is not valid JSON
       }
 
-      if (data.user) {
+      if (!res.ok) {
+        const errorMsg =
+          data?.error ||
+          (res.status === 401
+            ? 'Invalid email or password.'
+            : res.status === 409
+            ? 'An account with this email address already exists.'
+            : res.status === 400
+            ? 'Invalid request. Please check your credentials and password requirements.'
+            : `Authentication failed (${res.status}). Please try again.`);
+        throw new Error(errorMsg);
+      }
+
+      if (data?.user) {
         onAuthSuccess(data.user);
         onClose();
         // Reset form
         setEmail('');
         setPassword('');
         setDisplayName('');
+      } else {
+        throw new Error('No user data returned from authentication server.');
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');

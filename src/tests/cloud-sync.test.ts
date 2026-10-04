@@ -182,11 +182,12 @@ describe('AURA V2 — Frontend Cloud Sync & PostgreSQL Source of Truth', () => {
       expect(dbConv?.id).toBe(convId);
 
       const dbMessages = await listMessages(user.user.id, convId);
+      expect(dbMessages).not.toBeNull();
       expect(dbMessages).toHaveLength(2);
-      expect(dbMessages[0].role).toBe('user');
-      expect(dbMessages[0].content).toBe('Explain Paxos in three concise bullet points.');
-      expect(dbMessages[1].role).toBe('assistant');
-      expect(dbMessages[1].content.length).toBeGreaterThan(0);
+      expect(dbMessages![0].role).toBe('user');
+      expect(dbMessages![0].content).toBe('Explain Paxos in three concise bullet points.');
+      expect(dbMessages![1].role).toBe('assistant');
+      expect(dbMessages![1].content.length).toBeGreaterThan(0);
 
       // Verify frontend GET /api/conversations/:id/messages returns both messages
       const clientMsgsRes = await fetch(`${baseUrl}/api/conversations/${convId}/messages`, {

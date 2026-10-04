@@ -9,11 +9,20 @@ import authRouter from './src/routes/auth';
 import adminRouter from './src/routes/admin';
 import conversationsRouter from './src/routes/conversations';
 import settingsRouter from './src/routes/settings';
+import attachmentsRouter from './src/routes/attachments';
+import documentsRouter from './src/routes/documents';
+import sharesRouter from './src/routes/shares';
+import exportRouter from './src/routes/export';
+import profileRouter from './src/routes/profile';
 import { optionalAuth } from './src/middleware/auth';
 import { getConversation, createConversation, createMessage } from './src/db/conversations';
+import { createAttachment } from './src/db/attachments';
 import { isValidUuid } from './src/auth/service';
 import { runMigrations } from './src/db/migrate';
 import { getDatabaseUrl, checkDatabaseConnection } from './src/db/index';
+import { retrieveRagContext } from './src/ai/rag';
+import { defaultControlledAgent } from './src/ai/agent';
+import { buildSystemPrompt, buildRagContextString } from './src/ai/prompts';
 
 dotenv.config();
 
@@ -23,7 +32,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser(process.env.AUTH_SESSION_SECRET));
 
 // Supported Gemini models allowlist
@@ -89,6 +98,21 @@ app.use('/api/conversations', conversationsRouter);
 
 // Authenticated settings routes
 app.use('/api/settings', settingsRouter);
+
+// Attachments routes (Multimodal support)
+app.use('/api/attachments', attachmentsRouter);
+
+// RAG Documents routes
+app.use('/api/documents', documentsRouter);
+
+// Public Share Snapshots routes
+app.use('/api/shares', sharesRouter);
+
+// Export routes (Markdown, JSON, PDF)
+app.use('/api/export', exportRouter);
+
+// Profile and Account management routes
+app.use('/api/profile', profileRouter);
 
 // Health check endpoint
 app.get('/api/health', async (_req: Request, res: Response) => {
@@ -168,7 +192,7 @@ export function resolveTemperature(reqTemp: unknown, mode?: string): number {
 
 // REAL STREAMING ENDPOINT (Server-Sent Events)
 app.post('/api/chat/stream', chatLimiter, optionalAuth, async (req: Request, res: Response) => {
-  const { prompt, mode, model, temperature, systemInstruction, history, conversationId } = req.body;
+  const { prompt, mode, model, temperature, systemInstruction, history, conversationId, attachments, enableRag = true } = req.body;
 
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'A valid prompt string is required' });
@@ -177,32 +201,7 @@ app.post('/api/chat/stream', chatLimiter, optionalAuth, async (req: Request, res
 
   const activeModel = resolveModel(model);
   const activeTemp = resolveTemperature(temperature, mode);
-  const sanitizedInstruction =
-    typeof systemInstruction === 'string' && systemInstruction.trim()
-      ? systemInstruction.slice(0, 4000)
-      : 'You are AURA AI, an intelligent, warm, calm, and intellectually rigorous personal companion. Think better. Create freely.';
-
-  // If user is authenticated and conversationId is valid, persist user message
-  if (req.user && conversationId && isValidUuid(conversationId)) {
-    try {
-      const existing = await getConversation(req.user.id, conversationId);
-      if (!existing) {
-        await createConversation(req.user.id, {
-          id: conversationId,
-          title: prompt.slice(0, 36) + (prompt.length > 36 ? '...' : ''),
-          mode: mode || 'developer',
-        });
-      }
-      await createMessage(req.user.id, conversationId, {
-        role: 'user',
-        content: prompt,
-        mode: mode || 'developer',
-        model: activeModel,
-      });
-    } catch (err: any) {
-      console.error('Error persisting user stream message:', err?.message || err);
-    }
-  }
+  const personaInstruction = buildSystemPrompt(mode || 'developer', systemInstruction);
 
   // Set SSE Headers
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -216,20 +215,132 @@ app.post('/api/chat/stream', chatLimiter, optionalAuth, async (req: Request, res
     isAborted = true;
   });
 
-  // If Gemini client is available, stream real Gemini chunks
+  // 1. If user is authenticated and conversationId is valid, persist user message & attachments
+  let savedUserMessageId: string | null = null;
+  if (req.user && conversationId && isValidUuid(conversationId)) {
+    try {
+      const existing = await getConversation(req.user.id, conversationId);
+      if (!existing) {
+        await createConversation(req.user.id, {
+          id: conversationId,
+          title: prompt.slice(0, 36) + (prompt.length > 36 ? '...' : ''),
+          mode: mode || 'developer',
+        });
+      }
+      const userMsg = await createMessage(req.user.id, conversationId, {
+        role: 'user',
+        content: prompt,
+        mode: mode || 'developer',
+        model: activeModel,
+      });
+      if (userMsg) savedUserMessageId = userMsg.id;
+
+      // Link attachments
+      if (attachments && Array.isArray(attachments)) {
+        for (const att of attachments) {
+          if (att.filename && att.mimeType && att.sizeBytes) {
+            await createAttachment(req.user.id, {
+              conversationId,
+              messageId: savedUserMessageId,
+              filename: att.filename,
+              mimeType: att.mimeType,
+              sizeBytes: att.sizeBytes,
+              dataUrl: att.dataUrl || null,
+            });
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Error persisting user stream message:', err?.message || err);
+    }
+  }
+
+  // 2. RAG Retrieval if user is authenticated
+  let retrievedSources: any[] = [];
+  let ragContextStr = '';
+  if (req.user && enableRag) {
+    try {
+      const ragRes = await retrieveRagContext(req.user.id, prompt, 3);
+      if (ragRes.sources.length > 0) {
+        retrievedSources = ragRes.sources;
+        ragContextStr = buildRagContextString(ragRes.sources);
+        res.write(
+          `data: ${JSON.stringify({
+            sources: retrievedSources.map((s) => ({
+              documentId: s.documentId,
+              title: s.documentTitle,
+              chunkIndex: s.chunkIndex,
+              similarity: s.similarity,
+              contentPreview: s.content.slice(0, 150) + '...',
+            })),
+          })}\n\n`
+        );
+      }
+    } catch (ragErr) {
+      console.warn('RAG context retrieval skipped:', ragErr);
+    }
+  }
+
+  // 3. Agent Tool Call Check
+  const toolTriggers = defaultControlledAgent.detectToolIntent(prompt);
+  let toolExecutions: any[] = [];
+  if (toolTriggers.length > 0) {
+    const agentResult = await defaultControlledAgent.runWorkflow(
+      prompt,
+      personaInstruction,
+      activeModel,
+      activeTemp
+    );
+    if (agentResult.steps.length > 0) {
+      toolExecutions = agentResult.steps.map((s) => ({
+        toolName: s.toolName,
+        input: s.args,
+        output: s.result || s.error,
+        status: s.error ? 'error' : 'success',
+        executionTimeMs: s.durationMs,
+      }));
+      res.write(`data: ${JSON.stringify({ toolCalls: toolExecutions })}\n\n`);
+    }
+  }
+
+  // 4. Stream via Google Gemini SDK if available
   if (ai) {
     try {
       const sanitizedContents: any[] = sanitizeHistory(history);
+      const userParts: any[] = [];
+
+      // Multimodal image/document inlineData parts
+      if (attachments && Array.isArray(attachments)) {
+        for (const att of attachments) {
+          if (att.dataUrl && typeof att.dataUrl === 'string') {
+            const match = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              userParts.push({
+                inlineData: {
+                  mimeType: match[1],
+                  data: match[2],
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Add text prompt + RAG context
+      userParts.push({
+        text: `${prompt}${ragContextStr}`,
+      });
+
       sanitizedContents.push({
         role: 'user',
-        parts: [{ text: prompt.slice(0, 10000) }],
+        parts: userParts,
       });
 
       const responseStream = await ai.models.generateContentStream({
         model: activeModel,
         contents: sanitizedContents,
         config: {
-          systemInstruction: sanitizedInstruction,
+          systemInstruction: personaInstruction,
           temperature: activeTemp,
         },
       });
@@ -270,7 +381,6 @@ app.post('/api/chat/stream', chatLimiter, optionalAuth, async (req: Request, res
       return;
     } catch (err: any) {
       console.error('Gemini Stream Error:', err?.message || err);
-      // If error occurs, stream fallback with explicit error indicator
       if (!isAborted) {
         res.write(
           `data: ${JSON.stringify({

@@ -18,6 +18,23 @@ const router = express.Router();
 router.use(requireAuth);
 
 /**
+ * GET /api/conversations/search
+ * Search across titles and message contents for the authenticated user.
+ */
+router.get('/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const { searchConversationsAndMessages } = await import('../db/conversations');
+    const results = await searchConversationsAndMessages(userId, q);
+    res.json({ results });
+  } catch (err: any) {
+    console.error('Search conversations error:', err.message);
+    res.status(500).json({ error: 'Failed to search conversations' });
+  }
+});
+
+/**
  * GET /api/conversations
  * List all conversations belonging to the authenticated user.
  */

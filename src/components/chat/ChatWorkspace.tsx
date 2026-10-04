@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Conversation, Message, AIModeId, UserSettings } from '../../types';
+import { Conversation, Message, AIModeId, UserSettings, Attachment } from '../../types';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessage } from './ChatMessage';
 import { ChatComposer } from './ChatComposer';
@@ -13,7 +13,10 @@ import {
   Download, 
   Trash2, 
   Settings, 
-  SlidersHorizontal 
+  SlidersHorizontal,
+  FileDown,
+  Check,
+  X
 } from 'lucide-react';
 
 interface ChatWorkspaceProps {
@@ -453,7 +456,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }
   };
 
-  const handleSendMessage = async (text: string, modeToUse: AIModeId) => {
+  const handleSendMessage = async (text: string, modeToUse: AIModeId, attachments?: Attachment[]) => {
     let convId = activeConversationId;
 
     // If no active conversation, create one
@@ -494,6 +497,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       content: text,
       timestamp: Date.now(),
       mode: modeToUse,
+      attachments,
     };
 
     const assistantMessageId = user ? generateUuid() : `msg-ai-${Date.now()}`;
@@ -553,7 +557,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       const modeConfig = AI_MODES[modeToUse];
       const conversationHistory = (messagesMap[currentId] || []).concat(userMessage);
 
-      // Call real server-side streaming SSE endpoint with conversationId for persistence
+      // Call real server-side streaming SSE endpoint with conversationId & attachments
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -565,6 +569,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           temperature: userSettings.temperature ?? modeConfig.temperature,
           systemInstruction: modeConfig.systemPrompt,
           conversationId: currentId,
+          attachments: attachments?.map((a) => ({
+            filename: a.filename,
+            mimeType: a.mimeType,
+            sizeBytes: a.sizeBytes,
+            dataUrl: a.dataUrl,
+          })),
           history: conversationHistory.slice(-8).map((m) => ({
             role: m.role === 'assistant' ? 'model' : 'user',
             content: m.content
@@ -588,6 +598,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         const decoder = new TextDecoder();
         let accumulated = '';
         let buffer = '';
+        let accumulatedSources: any[] | undefined = undefined;
+        let accumulatedTools: any[] | undefined = undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -605,44 +617,39 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
             try {
               const parsed = JSON.parse(dataStr);
+              if (parsed.sources) {
+                accumulatedSources = parsed.sources;
+              }
+              if (parsed.toolCalls) {
+                accumulatedTools = parsed.toolCalls;
+              }
               if (parsed.text) {
                 accumulated += parsed.text;
-                const currentContent = accumulated;
-                setMessagesMap((prev) => {
-                  const convMsgs = prev[currentId] || [];
-                  return {
-                    ...prev,
-                    [currentId]: convMsgs.map((m) =>
-                      m.id === assistantMessageId
-                        ? {
-                            ...m,
-                            content: currentContent,
-                            model: parsed.model || m.model,
-                            isFallback: parsed.isFallback !== undefined ? parsed.isFallback : m.isFallback,
-                            warning: parsed.warning || m.warning
-                          }
-                        : m
-                    )
-                  };
-                });
-              } else if (parsed.warning || parsed.isFallback !== undefined) {
-                setMessagesMap((prev) => {
-                  const convMsgs = prev[currentId] || [];
-                  return {
-                    ...prev,
-                    [currentId]: convMsgs.map((m) =>
-                      m.id === assistantMessageId
-                        ? {
-                            ...m,
-                            model: parsed.model || m.model,
-                            isFallback: parsed.isFallback !== undefined ? parsed.isFallback : m.isFallback,
-                            warning: parsed.warning || m.warning
-                          }
-                        : m
-                    )
-                  };
-                });
               }
+
+              const currentContent = accumulated;
+              const currentSources = accumulatedSources;
+              const currentTools = accumulatedTools;
+
+              setMessagesMap((prev) => {
+                const convMsgs = prev[currentId] || [];
+                return {
+                  ...prev,
+                  [currentId]: convMsgs.map((m) =>
+                    m.id === assistantMessageId
+                      ? {
+                          ...m,
+                          content: currentContent,
+                          sources: currentSources || m.sources,
+                          toolCalls: currentTools || m.toolCalls,
+                          model: parsed.model || m.model,
+                          isFallback: parsed.isFallback !== undefined ? parsed.isFallback : m.isFallback,
+                          warning: parsed.warning || m.warning,
+                        }
+                      : m
+                  ),
+                };
+              });
             } catch {
               // Ignore partial JSON chunks
             }

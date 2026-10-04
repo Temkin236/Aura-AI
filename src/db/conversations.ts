@@ -362,3 +362,47 @@ export async function createMessage(
 
   return formatMessageRow(result.rows[0]);
 }
+
+/**
+ * Searches across conversation titles and message contents for the authenticated user.
+ */
+export async function searchConversationsAndMessages(
+  userId: string,
+  searchQuery: string,
+  clientOrPool?: pg.PoolClient | pg.Client | pg.Pool
+): Promise<Array<{ conversation: FormattedConversation; matchSnippet: string; matchType: 'title' | 'message' }>> {
+  if (!isValidUuid(userId) || !searchQuery || !searchQuery.trim()) return [];
+
+  const executor = clientOrPool || getPool();
+  const pattern = `%${searchQuery.trim().toLowerCase()}%`;
+
+  const queryText = `
+    SELECT DISTINCT ON (c.id)
+      c.id, c.user_id, c.title, c.mode, c.pinned, c.archived, c.created_at, c.updated_at,
+      COUNT(m_all.id)::int as message_count,
+      CASE
+        WHEN LOWER(c.title) LIKE $2 THEN 'title'
+        ELSE 'message'
+      END as match_type,
+      COALESCE(
+        CASE
+          WHEN LOWER(c.title) LIKE $2 THEN c.title
+          ELSE (SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND LOWER(m.content) LIKE $2 ORDER BY m.created_at DESC LIMIT 1)
+        END,
+        c.title
+      ) as match_snippet
+    FROM conversations c
+    LEFT JOIN messages m_all ON c.id = m_all.conversation_id
+    LEFT JOIN messages m_search ON c.id = m_search.conversation_id
+    WHERE c.user_id = $1 AND (LOWER(c.title) LIKE $2 OR LOWER(m_search.content) LIKE $2)
+    GROUP BY c.id, c.user_id, c.title, c.mode, c.pinned, c.archived, c.created_at, c.updated_at
+    ORDER BY c.id, c.updated_at DESC;
+  `;
+
+  const result = await executor.query(queryText, [userId, pattern]);
+  return result.rows.map((row) => ({
+    conversation: formatConversationRow(row),
+    matchSnippet: row.match_snippet ? row.match_snippet.slice(0, 160) : '',
+    matchType: row.match_type,
+  }));
+}

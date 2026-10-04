@@ -86,6 +86,53 @@ export interface DbSession {
   expires_at: Date;
 }
 
+export interface DbAttachment {
+  id: string;
+  user_id: string | null;
+  conversation_id: string | null;
+  message_id: string | null;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  storage_key: string | null;
+  data_url?: string | null;
+  created_at: Date;
+}
+
+export interface DbDocument {
+  id: string;
+  user_id: string;
+  title: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  total_chunks: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface DbDocumentChunk {
+  id: string;
+  document_id: string;
+  user_id: string;
+  chunk_index: number;
+  content: string;
+  embedding: number[];
+  metadata: Record<string, any>;
+  created_at: Date;
+}
+
+export interface DbShareLink {
+  id: string;
+  user_id: string;
+  conversation_id: string;
+  share_token: string;
+  is_active: boolean;
+  view_count: number;
+  created_at: Date;
+  expires_at: Date | null;
+}
+
 export interface SafeUser {
   id: string;
   email: string;

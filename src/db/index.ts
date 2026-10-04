@@ -26,15 +26,34 @@ export function getDatabaseUrl(): string {
  * Parses and builds the database pool configuration.
  */
 export function buildDatabaseConfig(customUrl?: string): DatabaseConfig {
-  const connectionString = customUrl || getDatabaseUrl();
+  let connectionString = customUrl || getDatabaseUrl();
   const isProduction = process.env.NODE_ENV === 'production';
-  const forceSsl = process.env.DATABASE_SSL === 'true' || connectionString.includes('sslmode=require');
+  const isCloudHost =
+    connectionString.includes('supabase.co') ||
+    connectionString.includes('supabase.com') ||
+    connectionString.includes('render.com') ||
+    connectionString.includes('railway.app') ||
+    connectionString.includes('neon.tech') ||
+    connectionString.includes('db.cloud.internal');
+
+  const forceSsl =
+    process.env.DATABASE_SSL === 'true' ||
+    connectionString.includes('sslmode=require') ||
+    isCloudHost;
+
+  // Clean out sslmode=require from connection string to allow pg custom ssl object configuration
+  if (connectionString.includes('sslmode=')) {
+    connectionString = connectionString.replace(/[?&]sslmode=[a-zA-Z-]+/, '');
+    if (connectionString.endsWith('?')) {
+      connectionString = connectionString.slice(0, -1);
+    }
+  }
 
   const config: DatabaseConfig = {
     connectionString,
     max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   };
 
   if (forceSsl || isProduction) {

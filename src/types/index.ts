@@ -12,6 +12,31 @@ export interface AIMode {
   suggestedPrompts: string[];
 }
 
+export interface Attachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl?: string;
+  createdAt?: string | number;
+}
+
+export interface RagSource {
+  documentId: string;
+  title: string;
+  chunkIndex: number;
+  similarity: number;
+  contentPreview: string;
+}
+
+export interface ToolCallInfo {
+  toolName: string;
+  input: Record<string, any>;
+  output?: any;
+  status: 'running' | 'success' | 'error';
+  executionTimeMs?: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -24,6 +49,9 @@ export interface Message {
   isFallback?: boolean;
   warning?: string;
   feedback?: 'helpful' | 'unhelpful' | null;
+  attachments?: Attachment[];
+  sources?: RagSource[];
+  toolCalls?: ToolCallInfo[];
 }
 
 export interface Conversation {
@@ -35,6 +63,7 @@ export interface Conversation {
   pinned?: boolean;
   archived?: boolean;
   messageCount: number;
+  tags?: string[];
 }
 
 export interface UserProfile {

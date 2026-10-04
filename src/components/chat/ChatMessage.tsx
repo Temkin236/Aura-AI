@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Message, AIModeId } from '../../types';
 import { AuraSymbol } from '../aura/AuraSymbol';
 import { MarkdownContent } from './MarkdownContent';
-import { Copy, Check, RotateCw, ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
+import { Copy, Check, RotateCw, ThumbsUp, ThumbsDown, Sparkles, Paperclip, BookOpen, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
 import { AI_MODES } from '../../data/modes';
 
 interface ChatMessageProps {
@@ -18,6 +18,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
+  const [showSources, setShowSources] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const [localFeedback, setLocalFeedback] = useState<'helpful' | 'unhelpful' | null>(
     message.feedback || null
   );
@@ -45,7 +47,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   if (isUser) {
     return (
       <div className="flex justify-end py-2.5 sm:py-3 px-3 sm:px-4 max-w-4xl mx-auto w-full group">
-        <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 bg-[#4A3026] text-[#FCFAF7] shadow-sm selection:bg-[#C7A46A] selection:text-[#2B1D17] transition-all">
+        <div className="max-w-[90%] sm:max-w-[75%] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 bg-[#4A3026] text-[#FCFAF7] shadow-sm selection:bg-[#C7A46A] selection:text-[#2B1D17] transition-all space-y-2">
+          {/* User Attachments */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-1">
+              {message.attachments.map((att) => (
+                <div key={att.id} className="rounded-xl overflow-hidden bg-black/20 p-1 border border-white/10">
+                  {att.mimeType.startsWith('image/') && att.dataUrl ? (
+                    <img
+                      src={att.dataUrl}
+                      alt={att.filename}
+                      className="max-h-48 max-w-full rounded-lg object-contain"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#EDE1D5]">
+                      <Paperclip className="w-3.5 h-3.5 text-[#C7A46A]" />
+                      <span className="truncate max-w-[180px]">{att.filename}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           <p className="text-[15px] sm:text-base leading-relaxed whitespace-pre-wrap font-sans">
             {message.content}
           </p>
@@ -109,6 +133,64 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
+
+          {/* RAG Sources Accordion */}
+          {message.sources && message.sources.length > 0 && (
+            <div className="rounded-xl border border-[#DCC9B8]/80 dark:border-[#3A2921] bg-[#EDE1D5]/40 dark:bg-[#211814] overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setShowSources(!showSources)}
+                className="w-full flex items-center justify-between px-3 py-2 text-[#6B493B] dark:text-[#DCC9B8] font-medium hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17]"
+              >
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#C7A46A]" />
+                  <span>Grounding: {message.sources.length} retrieved verified source(s)</span>
+                </div>
+                {showSources ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+              {showSources && (
+                <div className="p-3 border-t border-[#DCC9B8]/60 dark:border-[#3A2921] space-y-2">
+                  {message.sources.map((src, i) => (
+                    <div key={i} className="p-2 rounded-lg bg-[#FCFAF7] dark:bg-[#2B1D17] border border-[#DCC9B8]/40 dark:border-[#3A2921]">
+                      <div className="flex items-center justify-between font-semibold text-[#2B1D17] dark:text-[#FCFAF7]">
+                        <span>{src.title}</span>
+                        <span className="text-[10px] text-[#C7A46A]">{(src.similarity * 100).toFixed(0)}% match</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-[#8A7A70] dark:text-[#8A6756] italic">"{src.contentPreview}"</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tool Calls Accordion */}
+          {message.toolCalls && message.toolCalls.length > 0 && (
+            <div className="rounded-xl border border-[#DCC9B8]/80 dark:border-[#3A2921] bg-[#EDE1D5]/40 dark:bg-[#211814] overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setShowTools(!showTools)}
+                className="w-full flex items-center justify-between px-3 py-2 text-[#6B493B] dark:text-[#DCC9B8] font-medium hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17]"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-[#C7A46A]" />
+                  <span>Executed Agent Tools: {message.toolCalls.map(t => t.toolName).join(', ')}</span>
+                </div>
+                {showTools ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+              {showTools && (
+                <div className="p-3 border-t border-[#DCC9B8]/60 dark:border-[#3A2921] space-y-2 font-mono">
+                  {message.toolCalls.map((t, i) => (
+                    <div key={i} className="p-2 rounded-lg bg-[#FCFAF7] dark:bg-[#2B1D17] border border-[#DCC9B8]/40 dark:border-[#3A2921] text-[11px]">
+                      <div className="text-[#C7A46A] font-bold uppercase">{t.toolName} ({t.executionTimeMs}ms)</div>
+                      <div className="text-[#8A7A70]">Input: {JSON.stringify(t.input)}</div>
+                      <div className="text-[#2B1D17] dark:text-[#FCFAF7] mt-1">Output: {JSON.stringify(t.output)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Body Content */}
           <div className="prose-aura overflow-x-auto">

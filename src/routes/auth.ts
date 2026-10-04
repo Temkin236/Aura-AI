@@ -107,8 +107,12 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       client.release();
     }
   } catch (err: any) {
-    console.error('Signup error:', err.message);
-    res.status(500).json({ error: 'An error occurred during account creation. Please try again.' });
+    console.error('Signup error:', err);
+    const errorMessage =
+      process.env.NODE_ENV === 'development' && err.message
+        ? `Signup error: ${err.message}`
+        : 'An error occurred during account creation. Please try again.';
+    res.status(500).json({ error: errorMessage });
   }
 });
 

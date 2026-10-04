@@ -118,7 +118,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsLoadingMetrics(true);
     setMetricsError(null);
 
-    fetch('/api/admin/metrics', { headers: { Accept: 'application/json' } })
+    fetch('/api/admin/metrics', {
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    })
       .then((res) => {
         if (res.status === 401) {
           throw new Error('Authentication required. Please sign in as an administrator.');

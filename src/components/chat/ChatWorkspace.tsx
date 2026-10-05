@@ -1,363 +1,102 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Conversation, Message, AIModeId, UserSettings, Attachment } from '../../types';
+import { Conversation, Message, AIModeId, UserSettings } from '../../types';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessage } from './ChatMessage';
 import { ChatComposer } from './ChatComposer';
 import { WelcomeScreen } from './WelcomeScreen';
 import { AuraSymbol } from '../aura/AuraSymbol';
-import { AI_MODES, INITIAL_CONVERSATIONS, INITIAL_MESSAGES_MAP } from '../../data/modes';
-import { 
-  PanelLeft, 
-  Share2, 
-  Sparkles, 
-  Download, 
-  Trash2, 
-  Settings, 
-  SlidersHorizontal,
-  FileDown,
-  Check,
-  X
-} from 'lucide-react';
+import { AI_MODES } from '../../data/modes';
+import { PanelLeft, Sparkles, Moon, Sun, RotateCcw } from 'lucide-react';
 
 interface ChatWorkspaceProps {
   onOpenSettings: () => void;
-  onOpenAdmin: () => void;
-  onOpenLanding: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
   userSettings: UserSettings;
-  user?: import('../../db/types').SafeUser | null;
-  isAuthLoading?: boolean;
-  onOpenAuth?: () => void;
-  onSignOut?: () => void;
 }
 
-function generateUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+function generateId(): string {
+  return `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   onOpenSettings,
-  onOpenAdmin,
-  onOpenLanding,
   isDarkMode,
   onToggleTheme,
   userSettings,
-  user,
-  isAuthLoading = false,
-  onOpenAuth,
-  onSignOut,
 }) => {
+  // 1. Conversations state (with localStorage persistence)
   const [conversations, setConversations] = useState<Conversation[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_CONVERSATIONS;
     try {
       const saved = localStorage.getItem('aura_conversations');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {
-      // fallback
-    }
-    return INITIAL_CONVERSATIONS;
+    } catch {}
+    return [];
   });
 
-  const [activeConversationId, setActiveConversationId] = useState<string | null>('conv-1');
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    return conversations.length > 0 ? conversations[0].id : null;
+  });
 
+  // 2. Messages map state (with localStorage persistence)
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>(() => {
     try {
       const saved = localStorage.getItem('aura_messages');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return parsed;
-        }
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
       }
-    } catch {
-      // fallback
-    }
-
-    // Initial seed messages
-    const map: Record<string, Message[]> = {};
-    Object.entries(INITIAL_MESSAGES_MAP).forEach(([id, msgs]) => {
-      map[id] = msgs.map((m, idx) => ({
-        id: `msg-${id}-${idx}`,
-        conversationId: id,
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp,
-        model: m.role === 'assistant' ? 'aura-local-fallback' : undefined,
-        isFallback: m.role === 'assistant' ? true : undefined
-      }));
-    });
-    return map;
+    } catch {}
+    return {};
   });
 
   const [currentMode, setCurrentMode] = useState<AIModeId>(userSettings.defaultMode || 'developer');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const activeMessageFetchIdRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Sync mode if user updates defaultMode setting and active conversation is new
+  // Sync to localStorage
   useEffect(() => {
-    if (userSettings.defaultMode && (!activeConversation || activeConversation.messageCount === 0)) {
-      setCurrentMode(userSettings.defaultMode);
-    }
-  }, [userSettings.defaultMode]);
-
-  // Load server-side conversations when user is authenticated, or reset to local storage for anonymous
-  useEffect(() => {
-    if (isAuthLoading) return;
-
-    let isMounted = true;
-
-    if (user?.id) {
-      // Authenticated mode: PostgreSQL is authoritative
-      fetch('/api/conversations', { headers: { Accept: 'application/json' } })
-        .then((res) => {
-          if (res.status === 401) {
-            onSignOut?.();
-            return null;
-          }
-          return res.ok ? res.json() : null;
-        })
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.conversations) {
-            const serverConvs: Conversation[] = data.conversations.map((c: any) => ({
-              id: c.id,
-              title: c.title,
-              mode: c.mode as AIModeId,
-              createdAt: new Date(c.createdAt).getTime(),
-              updatedAt: new Date(c.updatedAt).getTime(),
-              pinned: c.pinned,
-              archived: c.archived,
-              messageCount: c.messageCount || 0,
-            }));
-            setConversations(serverConvs);
-
-            if (serverConvs.length > 0) {
-              const firstId = serverConvs[0].id;
-              setActiveConversationId(firstId);
-              activeMessageFetchIdRef.current = firstId;
-
-              fetch(`/api/conversations/${firstId}/messages`)
-                .then((r) => {
-                  if (r.status === 401) {
-                    onSignOut?.();
-                    return null;
-                  }
-                  return r.ok ? r.json() : null;
-                })
-                .then((mdata) => {
-                  if (!isMounted || activeMessageFetchIdRef.current !== firstId) return;
-                  if (mdata?.messages) {
-                    const loadedMsgs: Message[] = mdata.messages.map((m: any) => ({
-                      id: m.id,
-                      conversationId: m.conversationId,
-                      role: m.role,
-                      content: m.content,
-                      timestamp: new Date(m.createdAt).getTime(),
-                      mode: m.mode,
-                      model: m.model,
-                    }));
-                    setMessagesMap({ [firstId]: loadedMsgs });
-                  }
-                })
-                .catch(() => {});
-            } else {
-              setActiveConversationId(null);
-              setMessagesMap({});
-            }
-          }
-        })
-        .catch(() => {});
-
-      return () => {
-        isMounted = false;
-      };
-    } else {
-      // Anonymous user: restore from localStorage
-      try {
-        const savedConvs = localStorage.getItem('aura_conversations');
-        if (savedConvs) {
-          const parsed = JSON.parse(savedConvs);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setConversations(parsed);
-            setActiveConversationId(parsed[0].id);
-          } else {
-            setConversations(INITIAL_CONVERSATIONS);
-            setActiveConversationId('conv-1');
-          }
-        } else {
-          setConversations(INITIAL_CONVERSATIONS);
-          setActiveConversationId('conv-1');
-        }
-
-        const savedMsgs = localStorage.getItem('aura_messages');
-        if (savedMsgs) {
-          const parsed = JSON.parse(savedMsgs);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            setMessagesMap(parsed);
-            return;
-          }
-        }
-      } catch {}
-
-      // Initial seed fallback
-      const map: Record<string, Message[]> = {};
-      Object.entries(INITIAL_MESSAGES_MAP).forEach(([id, msgs]) => {
-        map[id] = msgs.map((m, idx) => ({
-          id: `msg-${id}-${idx}`,
-          conversationId: id,
-          role: m.role,
-          content: m.content,
-          timestamp: m.timestamp,
-          model: m.role === 'assistant' ? 'aura-local-fallback' : undefined,
-          isFallback: m.role === 'assistant' ? true : undefined,
-        }));
-      });
-      setMessagesMap(map);
-    }
-  }, [user?.id, isAuthLoading]);
-
-  // Debounced safe local storage sync (only for anonymous users, respects userSettings.saveHistory)
-  useEffect(() => {
-    if (user || isAuthLoading) return; // Authenticated users use PostgreSQL as single source of truth
-    if (userSettings.saveHistory === false) return;
     try {
       localStorage.setItem('aura_conversations', JSON.stringify(conversations));
-    } catch (e) {
-      console.warn('LocalStorage quota or write error:', e);
-    }
-  }, [conversations, userSettings.saveHistory, user, isAuthLoading]);
+    } catch {}
+  }, [conversations]);
 
   useEffect(() => {
-    if (user || isAuthLoading) return; // Authenticated users use PostgreSQL as single source of truth
-    if (isGenerating || userSettings.saveHistory === false) return;
+    try {
+      localStorage.setItem('aura_messages', JSON.stringify(messagesMap));
+    } catch {}
+  }, [messagesMap]);
 
-    const timer = setTimeout(() => {
-      try {
-        localStorage.setItem('aura_messages', JSON.stringify(messagesMap));
-      } catch (e) {
-        console.warn('LocalStorage quota or write error:', e);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [messagesMap, isGenerating, userSettings.saveHistory, user, isAuthLoading]);
-
-  // Current active conversation
-  const activeConversation = conversations.find((c) => c.id === activeConversationId);
-  const currentMessages = activeConversationId ? (messagesMap[activeConversationId] || []) : [];
-
-  // Sync currentMode with conversation if already set
-  useEffect(() => {
-    if (activeConversation) {
-      setCurrentMode(activeConversation.mode);
-    }
-  }, [activeConversationId]);
-
-  // Scroll to bottom on message change or streaming
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentMessages, isGenerating]);
-
-  const handleSelectConversation = (id: string) => {
-    setActiveConversationId(id);
-    setMobileDrawerOpen(false);
-
-    if (user?.id) {
-      if (!messagesMap[id] || messagesMap[id].length === 0) {
-        activeMessageFetchIdRef.current = id;
-        fetch(`/api/conversations/${id}/messages`)
-          .then((r) => {
-            if (r.status === 401) {
-              onSignOut?.();
-              return null;
-            }
-            return r.ok ? r.json() : null;
-          })
-          .then((data) => {
-            if (activeMessageFetchIdRef.current !== id) return; // Prevent race conditions
-            if (data?.messages) {
-              const loadedMsgs: Message[] = data.messages.map((m: any) => ({
-                id: m.id,
-                conversationId: m.conversationId,
-                role: m.role,
-                content: m.content,
-                timestamp: new Date(m.createdAt).getTime(),
-                mode: m.mode,
-                model: m.model,
-              }));
-              setMessagesMap((prev) => ({ ...prev, [id]: loadedMsgs }));
-            }
-          })
-          .catch(() => {});
-      }
-    }
+  // Auto-scroll to bottom
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   };
 
-  // Handle New Conversation
-  const handleNewConversation = async (initialMode: AIModeId = currentMode) => {
-    setMobileDrawerOpen(false);
+  const activeMessages = activeConversationId ? messagesMap[activeConversationId] || [] : [];
 
-    if (user?.id) {
-      try {
-        const res = await fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: 'New conversation',
-            mode: initialMode,
-          }),
-        });
+  useEffect(() => {
+    scrollToBottom(false);
+  }, [activeConversationId]);
 
-        if (res.status === 401) {
-          onSignOut?.();
-          return;
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.conversation) {
-            const c = data.conversation;
-            const newConv: Conversation = {
-              id: c.id,
-              title: c.title,
-              mode: (c.mode as AIModeId) || initialMode,
-              createdAt: new Date(c.createdAt).getTime(),
-              updatedAt: new Date(c.updatedAt).getTime(),
-              pinned: c.pinned ?? false,
-              archived: c.archived ?? false,
-              messageCount: 0,
-            };
-            setConversations((prev) => [newConv, ...prev.filter((item) => item.id !== newConv.id)]);
-            setActiveConversationId(newConv.id);
-            setMessagesMap((prev) => ({ ...prev, [newConv.id]: [] }));
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Failed to create conversation on server:', e);
-      }
+  useEffect(() => {
+    if (isGenerating) {
+      scrollToBottom(true);
     }
+  }, [activeMessages, isGenerating]);
 
-    // Anonymous fallback:
-    const newId = `conv-${Date.now()}`;
+  // Create New Conversation
+  const handleNewConversation = (initialMode: AIModeId = currentMode) => {
+    const newId = generateId();
     const newConv: Conversation = {
       id: newId,
-      title: 'New conversation',
+      title: 'New Conversation',
       mode: initialMode,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -366,482 +105,336 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
-    setMessagesMap((prev) => ({ ...prev, [newId]: [] }));
+    setCurrentMode(initialMode);
+    return newId;
   };
 
+  // Delete Conversation
   const handleDeleteConversation = (id: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== id));
     setMessagesMap((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
     });
 
     if (activeConversationId === id) {
       const remaining = conversations.filter((c) => c.id !== id);
-      const nextActive = remaining.length > 0 ? remaining[0].id : null;
-      setActiveConversationId(nextActive);
-      if (nextActive && user?.id && (!messagesMap[nextActive] || messagesMap[nextActive].length === 0)) {
-        handleSelectConversation(nextActive);
-      }
-    }
-
-    if (user?.id) {
-      fetch(`/api/conversations/${id}`, { method: 'DELETE' })
-        .then((r) => {
-          if (r.status === 401) onSignOut?.();
-        })
-        .catch((e) => console.error('Failed to delete conversation on server:', e));
+      setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
     }
   };
 
+  // Rename Conversation
   const handleRenameConversation = (id: string, newTitle: string) => {
-    const trimmed = newTitle.trim();
-    if (!trimmed) return;
-
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title: trimmed, updatedAt: Date.now() } : c))
+      prev.map((c) => (c.id === id ? { ...c, title: newTitle, updatedAt: Date.now() } : c))
     );
-
-    if (user?.id) {
-      fetch(`/api/conversations/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: trimmed }),
-      })
-        .then((r) => {
-          if (r.status === 401) onSignOut?.();
-        })
-        .catch((e) => console.error('Failed to update title on server:', e));
-    }
   };
 
-  const handleArchiveConversation = (id: string) => {
-    const target = conversations.find((c) => c.id === id);
-    const nextArchived = target ? !target.archived : true;
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, archived: nextArchived } : c))
-    );
-
-    if (user?.id) {
-      fetch(`/api/conversations/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ archived: nextArchived }),
-      })
-        .then((r) => {
-          if (r.status === 401) onSignOut?.();
-        })
-        .catch((e) => console.error('Failed to update archive status on server:', e));
-    }
-  };
-
+  // Pin / Unpin Conversation
   const handleTogglePin = (id: string) => {
-    const target = conversations.find((c) => c.id === id);
-    const nextPinned = target ? !target.pinned : true;
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: nextPinned } : c))
+      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
     );
-
-    if (user?.id) {
-      fetch(`/api/conversations/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pinned: nextPinned }),
-      })
-        .then((r) => {
-          if (r.status === 401) onSignOut?.();
-        })
-        .catch((e) => console.error('Failed to update pin status on server:', e));
-    }
   };
 
-  const handleSendMessage = async (text: string, modeToUse: AIModeId, attachments?: Attachment[]) => {
-    let convId = activeConversationId;
-
-    // If no active conversation, create one
-    if (!convId) {
-      convId = user ? generateUuid() : `conv-${Date.now()}`;
-      const newConv: Conversation = {
-        id: convId,
-        title: text.slice(0, 36) + (text.length > 36 ? '...' : ''),
-        mode: modeToUse,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        messageCount: 1,
-      };
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveConversationId(convId);
-      setMessagesMap((prev) => ({ ...prev, [convId as string]: [] }));
-
-      if (user?.id) {
-        fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: convId,
-            title: newConv.title,
-            mode: modeToUse,
-          }),
-        }).catch(() => {});
-      }
+  // Stop Generation
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
+    setIsGenerating(false);
 
-    const currentId = convId as string;
-    const msgId = user ? generateUuid() : `msg-${Date.now()}`;
-
-    const userMessage: Message = {
-      id: msgId,
-      conversationId: currentId,
-      role: 'user',
-      content: text,
-      timestamp: Date.now(),
-      mode: modeToUse,
-      attachments,
-    };
-
-    const assistantMessageId = user ? generateUuid() : `msg-ai-${Date.now()}`;
-    const initialAssistantMessage: Message = {
-      id: assistantMessageId,
-      conversationId: currentId,
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-      mode: modeToUse,
-      isStreaming: true,
-    };
-
-    // Update state with user message and streaming placeholder
-    setMessagesMap((prev) => ({
-      ...prev,
-      [currentId]: [...(prev[currentId] || []), userMessage, initialAssistantMessage],
-    }));
-
-    // Update conversation metadata
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === currentId
-          ? {
-              ...c,
-              updatedAt: Date.now(),
-              messageCount: (c.messageCount || 0) + 2,
-              title:
-                (c.title === 'New conversation' || c.messageCount === 0) && userSettings.autoTitle !== false
-                  ? text.slice(0, 36) + (text.length > 36 ? '...' : '')
-                  : c.title,
-            }
-          : c
-      )
-    );
-
-    const currentConv = conversations.find((c) => c.id === currentId);
-    if (
-      currentConv &&
-      (currentConv.title === 'New conversation' || currentConv.messageCount === 0) &&
-      userSettings.autoTitle !== false
-    ) {
-      const generatedTitle = text.slice(0, 36) + (text.length > 36 ? '...' : '');
-      if (user?.id) {
-        fetch(`/api/conversations/${currentId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: generatedTitle }),
-        }).catch(() => {});
-      }
-    }
-
-    setIsGenerating(true);
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const modeConfig = AI_MODES[modeToUse];
-      const conversationHistory = (messagesMap[currentId] || []).concat(userMessage);
-
-      // Call real server-side streaming SSE endpoint with conversationId & attachments
-      const response = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: abortControllerRef.current.signal,
-        body: JSON.stringify({
-          prompt: text,
-          mode: modeToUse,
-          model: userSettings.model || 'gemini-2.5-flash',
-          temperature: userSettings.temperature ?? modeConfig.temperature,
-          systemInstruction: modeConfig.systemPrompt,
-          conversationId: currentId,
-          attachments: attachments?.map((a) => ({
-            filename: a.filename,
-            mimeType: a.mimeType,
-            sizeBytes: a.sizeBytes,
-            dataUrl: a.dataUrl,
-          })),
-          history: conversationHistory.slice(-8).map((m) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            content: m.content
-          }))
-        })
-      });
-
-      if (response.status === 429) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "You're sending messages a little too quickly. Please try again in a moment.");
-      }
-
-      if (!response.ok) {
-        throw new Error(`Server returned status ${response.status}`);
-      }
-
-      // Check if response is streaming SSE
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('text/event-stream') && response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = '';
-        let buffer = '';
-        let accumulatedSources: any[] | undefined = undefined;
-        let accumulatedTools: any[] | undefined = undefined;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine.startsWith('data:')) continue;
-            const dataStr = trimmedLine.slice(5).trim();
-            if (dataStr === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(dataStr);
-              if (parsed.sources) {
-                accumulatedSources = parsed.sources;
-              }
-              if (parsed.toolCalls) {
-                accumulatedTools = parsed.toolCalls;
-              }
-              if (parsed.text) {
-                accumulated += parsed.text;
-              }
-
-              const currentContent = accumulated;
-              const currentSources = accumulatedSources;
-              const currentTools = accumulatedTools;
-
-              setMessagesMap((prev) => {
-                const convMsgs = prev[currentId] || [];
-                return {
-                  ...prev,
-                  [currentId]: convMsgs.map((m) =>
-                    m.id === assistantMessageId
-                      ? {
-                          ...m,
-                          content: currentContent,
-                          sources: currentSources || m.sources,
-                          toolCalls: currentTools || m.toolCalls,
-                          model: parsed.model || m.model,
-                          isFallback: parsed.isFallback !== undefined ? parsed.isFallback : m.isFallback,
-                          warning: parsed.warning || m.warning,
-                        }
-                      : m
-                  ),
-                };
-              });
-            } catch {
-              // Ignore partial JSON chunks
-            }
-          }
-        }
-      } else {
-        // Fallback for standard JSON response
-        const data = await response.json();
-        const fullContent = data.text || data.response || 'I am listening. How can we explore this further?';
-        setMessagesMap((prev) => {
-          const convMsgs = prev[currentId] || [];
-          return {
-            ...prev,
-            [currentId]: convMsgs.map((m) =>
-              m.id === assistantMessageId
-                ? {
-                    ...m,
-                    content: fullContent,
-                    isStreaming: false,
-                    model: data.model,
-                    isFallback: data.isFallback,
-                    warning: data.warning
-                  }
-                : m
-            )
-          };
-        });
-      }
-    } catch (err: unknown) {
-      if ((err as Error)?.name === 'AbortError') {
-        // User deliberately stopped generation
-      } else {
-        const errMsg = (err as Error)?.message || 'Chat generation error occurred.';
-        console.error('Chat generation error:', errMsg);
-        const fallbackText = errMsg.includes('quickly')
-          ? errMsg
-          : getModeFallback(modeToUse, text);
-
-        setMessagesMap((prev) => {
-          const convMsgs = prev[currentId] || [];
-          return {
-            ...prev,
-            [currentId]: convMsgs.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, content: fallbackText, isStreaming: false, isFallback: true, warning: errMsg }
-                : m
-            )
-          };
-        });
-      }
-    } finally {
-      setIsGenerating(false);
+    if (activeConversationId) {
       setMessagesMap((prev) => {
-        const convMsgs = prev[currentId] || [];
+        const msgs = prev[activeConversationId] || [];
         return {
           ...prev,
-          [currentId]: convMsgs.map((m) =>
-            m.id === assistantMessageId ? { ...m, isStreaming: false } : m
-          )
+          [activeConversationId]: msgs.map((m) =>
+            m.isStreaming ? { ...m, isStreaming: false } : m
+          ),
         };
       });
     }
   };
 
-  const handleStopGeneration = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      setIsGenerating(false);
-    }
-  };
+  // Send Message with Real Gemini SSE Streaming
+  const handleSendMessage = async (text: string, mode: AIModeId = currentMode) => {
+    if (!text.trim() || isGenerating) return;
 
-  const handleClearMessages = () => {
-    if (activeConversationId) {
-      setMessagesMap((prev) => ({ ...prev, [activeConversationId]: [] }));
-    }
-  };
+    let convId = activeConversationId;
+    let isFirstMessage = false;
 
-  const handleExportConversation = () => {
-    if (!activeConversation) return;
-    const exportData = {
-      title: activeConversation.title,
-      mode: activeConversation.mode,
-      exportedAt: new Date().toISOString(),
-      messages: currentMessages
+    if (!convId || !conversations.some((c) => c.id === convId)) {
+      convId = handleNewConversation(mode);
+      isFirstMessage = true;
+    } else {
+      const existingMsgs = messagesMap[convId] || [];
+      if (existingMsgs.length === 0) {
+        isFirstMessage = true;
+      }
+    }
+
+    // Auto-generate title from first user prompt
+    if (isFirstMessage) {
+      const cleanTitle = text.trim().slice(0, 32) + (text.trim().length > 32 ? '...' : '');
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId ? { ...c, title: cleanTitle, mode, updatedAt: Date.now() } : c
+        )
+      );
+    }
+
+    const userMsgId = `msg-user-${Date.now()}`;
+    const assistantMsgId = `msg-ai-${Date.now()}`;
+
+    const userMessage: Message = {
+      id: userMsgId,
+      conversationId: convId,
+      role: 'user',
+      content: text.trim(),
+      timestamp: Date.now(),
+      mode,
     };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeConversation.title.replace(/\s+/g, '_')}_aura.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const initialAssistantMessage: Message = {
+      id: assistantMsgId,
+      conversationId: convId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      mode,
+      isStreaming: true,
+    };
+
+    // Append user message & placeholder assistant message
+    const previousHistory = (messagesMap[convId] || []).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [convId!]: [...(prev[convId!] || []), userMessage, initialAssistantMessage],
+    }));
+
+    setIsGenerating(true);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({
+          message: text.trim(),
+          history: previousHistory,
+          mode,
+          model: userSettings.model || 'gemini-2.5-flash',
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        let errorText = 'Failed to connect to AI service.';
+        try {
+          const errJson = await response.json();
+          if (errJson.error) errorText = errJson.error;
+        } catch {}
+        throw new Error(errorText);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Readable stream not supported in this browser.');
+      }
+
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine.startsWith('data:')) continue;
+
+          const dataPayload = trimmedLine.slice(5).trim();
+          if (dataPayload === '[DONE]') {
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(dataPayload);
+            if (parsed.error) {
+              accumulatedContent = parsed.error;
+              setMessagesMap((prev) => ({
+                ...prev,
+                [convId!]: (prev[convId!] || []).map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: accumulatedContent, isStreaming: false, isError: true }
+                    : m
+                ),
+              }));
+              setIsGenerating(false);
+              return;
+            }
+
+            if (parsed.text) {
+              accumulatedContent += parsed.text;
+              setMessagesMap((prev) => ({
+                ...prev,
+                [convId!]: (prev[convId!] || []).map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: accumulatedContent, isStreaming: true }
+                    : m
+                ),
+              }));
+            }
+          } catch {}
+        }
+      }
+
+      // Mark generation complete
+      setMessagesMap((prev) => ({
+        ...prev,
+        [convId!]: (prev[convId!] || []).map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, content: accumulatedContent || 'No response generated.', isStreaming: false }
+            : m
+        ),
+      }));
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        // User aborted intentionally
+      } else {
+        const errorMessage = err?.message || "AURA couldn't reach Gemini. Please try again.";
+        setMessagesMap((prev) => ({
+          ...prev,
+          [convId!]: (prev[convId!] || []).map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  content: errorMessage,
+                  isStreaming: false,
+                  isError: true,
+                }
+              : m
+          ),
+        }));
+      }
+    } finally {
+      setIsGenerating(false);
+      abortControllerRef.current = null;
+    }
   };
+
+  // Regenerate Latest Assistant Response
+  const handleRegenerate = () => {
+    if (!activeConversationId || isGenerating) return;
+    const msgs = messagesMap[activeConversationId] || [];
+    if (msgs.length === 0) return;
+
+    // Find the last user message
+    let lastUserMessageIndex = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'user') {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMessageIndex === -1) return;
+
+    const lastUserMessage = msgs[lastUserMessageIndex];
+    // Trim history back to before this user message
+    const trimmedMsgs = msgs.slice(0, lastUserMessageIndex);
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeConversationId]: trimmedMsgs,
+    }));
+
+    // Resend
+    handleSendMessage(lastUserMessage.content, lastUserMessage.mode || currentMode);
+  };
+
+  const activeConv = conversations.find((c) => c.id === activeConversationId);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5]">
-      {/* Sidebar (Desktop collapsible & Mobile drawer) */}
+    <div className="flex h-screen overflow-hidden bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5]">
+      {/* Sidebar */}
       <ChatSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onSelectConversation={(id) => {
-          setActiveConversationId(id);
-          setMobileDrawerOpen(false);
-        }}
-        onNewConversation={() => handleNewConversation(userSettings.defaultMode || currentMode)}
+        onSelectConversation={setActiveConversationId}
+        onNewConversation={() => handleNewConversation()}
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
-        onArchiveConversation={handleArchiveConversation}
         onTogglePinConversation={handleTogglePin}
-        isDesktopOpen={sidebarOpen}
-        isMobileOpen={mobileDrawerOpen}
-        onCloseMobile={() => setMobileDrawerOpen(false)}
-        onToggleCollapse={() => setSidebarOpen(!sidebarOpen)}
+        isDesktopOpen={isDesktopSidebarOpen}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onToggleCollapse={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
         onOpenSettings={onOpenSettings}
-        onOpenAdmin={onOpenAdmin}
-        onOpenLanding={onOpenLanding}
         isDarkMode={isDarkMode}
         onToggleTheme={onToggleTheme}
-        user={user}
-        onOpenAuth={onOpenAuth}
-        onSignOut={onSignOut}
       />
 
-      {/* Main Workspace Frame */}
-      <main className="flex-1 flex flex-col h-full min-w-0 relative">
-        {/* Workspace Top Header */}
-        <header className="h-14 sm:h-16 px-2.5 sm:px-6 flex items-center justify-between border-b border-[#DCC9B8]/60 dark:border-[#3A2921] bg-[#FCFAF7]/85 dark:bg-[#17110E]/85 backdrop-blur-md z-10">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
-            {/* Sidebar Toggle for Desktop and Mobile */}
+      {/* Main Workspace Area */}
+      <div className="flex-1 flex flex-col h-full min-w-0 relative">
+        {/* Workspace Top Bar */}
+        <header className="h-14 px-4 flex items-center justify-between border-b border-[#EDE1D5] dark:border-[#2B1D17] bg-[#FCFAF7]/80 dark:bg-[#1E1511]/80 backdrop-blur-md z-10 select-none">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Sidebar toggle buttons */}
             <button
               onClick={() => {
-                if (window.innerWidth < 1024) {
-                  setMobileDrawerOpen(true);
+                if (window.innerWidth < 768) {
+                  setIsMobileSidebarOpen(true);
                 } else {
-                  setSidebarOpen(!sidebarOpen);
+                  setIsDesktopSidebarOpen(!isDesktopSidebarOpen);
                 }
               }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all shrink-0"
+              className="p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all"
               title="Toggle sidebar"
               aria-label="Toggle sidebar"
             >
-              <PanelLeft className="w-5 h-5" />
+              <PanelLeft className="w-4 h-4" />
             </button>
 
             <div className="flex items-center gap-2 min-w-0 truncate">
-              <span className="font-serif text-sm sm:text-base md:text-lg font-medium text-[#2B1D17] dark:text-[#FCFAF7] truncate max-w-[130px] sm:max-w-xs md:max-w-md">
-                {activeConversation?.title || 'What would you like to explore?'}
-              </span>
-
-              {activeConversation && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#DCC9B8] border border-[#DCC9B8]/70 dark:border-[#3A2921] shrink-0">
-                  <Sparkles className="w-3 h-3 text-[#C7A46A]" />
-                  {AI_MODES[activeConversation.mode]?.name}
-                </span>
-              )}
+              <AuraSymbol size={18} variant="gold" />
+              <h2 className="font-serif font-medium text-sm text-[#2B1D17] dark:text-[#FCFAF7] truncate">
+                {activeConv ? activeConv.title : 'AURA AI'}
+              </h2>
             </div>
           </div>
 
-          {/* Header Action Tools */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={handleExportConversation}
-              disabled={currentMessages.length === 0}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Export conversation"
-              aria-label="Export conversation"
+              onClick={onToggleTheme}
+              className="p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all"
+              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              aria-label="Toggle theme"
             >
-              <Download className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={handleClearMessages}
-              disabled={currentMessages.length === 0}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-[#8A6756] dark:text-[#8A6756] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#211814] active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Clear messages in conversation"
-              aria-label="Clear messages"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onOpenLanding}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#DCC9B8] dark:border-[#3A2921] text-xs font-medium text-[#4A3026] dark:text-[#EDE1D5] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#211814] active:scale-95 transition-all min-h-[36px]"
-            >
-              <span>Explore AURA</span>
+              {isDarkMode ? <Sun className="w-4 h-4 text-[#C7A46A]" /> : <Moon className="w-4 h-4" />}
             </button>
           </div>
         </header>
 
-        {/* Message Scrollable Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
-          {currentMessages.length === 0 ? (
+        {/* Message Stream Area */}
+        <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-2 scrollbar-thin">
+          {activeMessages.length === 0 ? (
             <WelcomeScreen
               currentMode={currentMode}
               onSelectPrompt={(prompt, mode) => {
@@ -850,95 +443,30 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               }}
             />
           ) : (
-            <div className="flex-1 py-4 sm:py-6">
-              {currentMessages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onRegenerate={() => {
-                    // find last user message and resend
-                    const lastUserMsg = [...currentMessages]
-                      .reverse()
-                      .find((m) => m.role === 'user');
-                    if (lastUserMsg) {
-                      handleSendMessage(lastUserMsg.content, currentMode);
-                    }
-                  }}
-                />
-              ))}
-              <div ref={messagesEndRef} className="h-4" />
-            </div>
+            activeMessages.map((msg, idx) => (
+              <ChatMessage
+                key={msg.id || idx}
+                message={msg}
+                isLatest={idx === activeMessages.length - 1}
+                onRegenerate={handleRegenerate}
+              />
+            ))
           )}
+          <div ref={messagesEndRef} className="h-4" />
         </div>
 
-        {/* Floating Composer */}
-        <div className="w-full flex-shrink-0">
+        {/* Bottom Composer Area */}
+        <div className="p-3 sm:p-4 bg-gradient-to-t from-[#F8F3ED] via-[#F8F3ED] dark:from-[#17110E] dark:via-[#17110E] to-transparent">
           <ChatComposer
             onSendMessage={handleSendMessage}
             onStopGeneration={handleStopGeneration}
             isGenerating={isGenerating}
             currentMode={currentMode}
-            onSelectMode={(mode) => setCurrentMode(mode)}
+            onSelectMode={setCurrentMode}
+            placeholder={`Ask AURA in ${AI_MODES[currentMode]?.name || 'Developer'} mode...`}
           />
         </div>
-      </main>
+      </div>
     </div>
   );
 };
-
-// Thoughtful, rich mode fallback when offline or before backend responds
-function getModeFallback(mode: AIModeId, prompt: string): string {
-  switch (mode) {
-    case 'developer':
-      return `### Architectural Reflection
-
-Here is an elegant conceptual approach to \`${prompt.slice(0, 40)}\`:
-
-\`\`\`python
-# Clean, idiomatic implementation pattern
-def solve_problem(context: dict) -> dict:
-    """
-    Modular implementation adhering to first-principles design.
-    """
-    result = {"status": "optimized", "insights": context}
-    return result
-\`\`\`
-
-1. **First Principles**: Decouple stateful mutation from query patterns.
-2. **Robust Invariants**: Guarantee deterministic handling across concurrent threads.
-3. **Ergonomics**: Maintain clean interfaces that leave no ambiguity for caller code.`;
-
-    case 'creative':
-      return `### The Architecture of Light and Intention
-
-*"To create freely is not to lack discipline; it is to master simplicity until only the essential remains."*
-
-Regarding your prompt: let us view it through a lens of tactile resonance. Rather than constructing mere utilities, design as though every contour invites touch, every pause allows contemplation, and every stroke carries purpose.`;
-
-    case 'tutor':
-      return `### Breaking It Down from First Principles
-
-To understand this concept deeply, consider this guiding mental model:
-
-1. **The Core Intuition**: Every complex structure is simply a repetition of elementary rules.
-2. **Step-by-step**: First establish the baseline state, then introduce the perturbation, and observe how the equilibrium reasserts itself.
-3. **Checkpoint**: Does this mental model feel intuitive, or would you like to explore an analogy grounded in physical systems?`;
-
-    case 'professional':
-      return `### Executive Synthesis & Action Vector
-
-**Executive Summary:**
-A structured approach to your objective yields immediate operational clarity.
-
-- **Primary Objective**: Align core deliverables with high-leverage outcomes.
-- **Risk Mitigation**: Establish continuous feedback loops to detect drift early.
-- **Next Step**: Synthesize key stakeholder inputs before scaling execution.`;
-
-    default:
-      return `Thank you for sharing that with me. I appreciate how you are approaching this question.
-
-When we pause and examine this thoughtfully, the most interesting aspect is how balance and clarity can be maintained without rushing.
-
-What part of this would you like to unpack first together?`;
-  }
-}

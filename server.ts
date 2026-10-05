@@ -45,15 +45,17 @@ app.get('/api/health', (_req: Request, res: Response): void => {
  * Primary AI streaming endpoint powered by real Google Gemini.
  */
 app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> => {
-  const { message, history, mode = 'developer', model } = req.body;
+  const rawText = req.body.message ?? req.body.prompt;
+  const message = typeof rawText === 'string' ? rawText.trim() : '';
+  const { history, mode = 'developer', model } = req.body;
 
   // 1. Validate incoming message
-  if (!message || typeof message !== 'string' || !message.trim()) {
+  if (!message) {
     res.status(400).json({ error: 'A valid, non-empty message is required.' });
     return;
   }
 
-  const trimmedMessage = message.trim();
+  const trimmedMessage = message;
   if (trimmedMessage.length > 20000) {
     res.status(400).json({ error: 'Message exceeds the 20,000 character limit.' });
     return;

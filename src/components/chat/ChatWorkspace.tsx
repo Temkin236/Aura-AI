@@ -232,6 +232,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         },
         body: JSON.stringify({
           message: text.trim(),
+          prompt: text.trim(),
           history: previousHistory,
           mode,
           model: userSettings.model || 'gemini-2.5-flash',

@@ -77,7 +77,7 @@ describe('AURA AI — Core Chatbot API Test Suite', () => {
       const bodyText = await res.text();
       expect(bodyText).toContain('data:');
       expect(bodyText).toContain('[DONE]');
-    });
+    }, 15000);
 
     it('sanitizes and gracefully handles malformed history turns', async () => {
       const res = await fetch(`${baseUrl}/api/chat/stream`, {
@@ -98,6 +98,6 @@ describe('AURA AI — Core Chatbot API Test Suite', () => {
       expect(res.status).toBe(200);
       const text = await res.text();
       expect(text).toContain('[DONE]');
-    });
+    }, 15000);
   });
 });

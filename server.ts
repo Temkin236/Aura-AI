@@ -17,15 +17,16 @@ app.use(express.json({ limit: '5mb' }));
 
 // Supported Gemini models allowlist
 export const ALLOWED_MODELS = [
+  'gemini-flash-latest',
+  'gemini-1.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-pro',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
 ] as const;
 
 export type SupportedModel = (typeof ALLOWED_MODELS)[number];
-export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-2.5-flash';
+export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-flash-latest';
 
 /**
  * GET /api/health
@@ -39,6 +40,42 @@ app.get('/api/health', (_req: Request, res: Response): void => {
     version: '0.2.0',
   });
 });
+
+/**
+ * Direct REST endpoint for Google Gemini generateContent (compatible with X-goog-api-key).
+ */
+async function callGeminiRest(
+  apiKey: string,
+  model: string,
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+  systemInstruction: string
+): Promise<string> {
+  const modelName = model || 'gemini-flash-latest';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      contents,
+      systemInstruction: {
+        parts: [{ text: systemInstruction }],
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini API returned status ${response.status}: ${errText}`);
+  }
+
+  const data: any = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return text || 'No response generated.';
+}
 
 /**
  * POST /api/chat/stream
@@ -109,13 +146,28 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
     res.write(
       `data: ${JSON.stringify({
         error:
-          'Google Gemini API Key is required for live AI responses. Please click Settings (⚙️) in the top right and enter your Gemini API Key, or set GEMINI_API_KEY in your .env file.',
+          'Google Gemini API Key is required. Please click Settings (⚙️) and enter your Gemini API Key, or set GEMINI_API_KEY in your .env file.',
       })}\n\n`
     );
     res.write('data: [DONE]\n\n');
     res.end();
     return;
   }
+
+  // Format Gemini contents payload
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+  for (const turn of sanitizedHistory) {
+    contents.push({
+      role: turn.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: turn.content }],
+    });
+  }
+
+  contents.push({
+    role: 'user',
+    parts: [{ text: trimmedMessage }],
+  });
 
   // 6. Stream real response from Google Gemini
   try {
@@ -126,21 +178,6 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
           'User-Agent': 'aura-ai/0.2.0',
         },
       },
-    });
-
-    // Format Gemini contents payload
-    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
-
-    for (const turn of sanitizedHistory) {
-      contents.push({
-        role: turn.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: turn.content }],
-      });
-    }
-
-    contents.push({
-      role: 'user',
-      parts: [{ text: trimmedMessage }],
     });
 
     const responseStream = await ai.models.generateContentStream({
@@ -164,19 +201,29 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
       res.write('data: [DONE]\n\n');
     }
     res.end();
-  } catch (err: any) {
-    console.error('Gemini generation error:', err?.message || err);
+  } catch (sdkErr: any) {
+    try {
+      // Fallback to direct REST call if SDK stream fails
+      const directText = await callGeminiRest(activeApiKey, targetModel, contents, systemInstruction);
+      if (!clientAborted) {
+        res.write(`data: ${JSON.stringify({ text: directText })}\n\n`);
+        res.write('data: [DONE]\n\n');
+      }
+      res.end();
+    } catch (err: any) {
+      console.error('Gemini generation error:', err?.message || err);
 
-    const errorMessage =
-      err?.message?.includes('API_KEY_INVALID') || err?.message?.includes('API key not valid')
-        ? 'Invalid Gemini API key. Please verify your GEMINI_API_KEY in Settings or in .env.'
-        : err?.status === 429 || err?.message?.includes('quota') || err?.message?.includes('RESOURCE_EXHAUSTED')
-        ? 'Gemini rate limit exceeded. Please wait a moment and try again.'
-        : err?.message || "AURA couldn't reach Gemini. Please check your connection.";
+      const errorMessage =
+        err?.message?.includes('API_KEY_INVALID') || err?.message?.includes('API key not valid')
+          ? 'Invalid Gemini API key. Please check your GEMINI_API_KEY in Settings or in .env.'
+          : err?.status === 429 || err?.message?.includes('quota') || err?.message?.includes('RESOURCE_EXHAUSTED')
+          ? 'Gemini rate limit exceeded. Please wait a moment and try again.'
+          : err?.message || "AURA couldn't reach Gemini. Please check your connection.";
 
-    res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
-    res.write('data: [DONE]\n\n');
-    res.end();
+      res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   }
 });
 

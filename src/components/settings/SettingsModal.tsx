@@ -173,12 +173,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
             <div className="space-y-1.5">
               {[
-                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'Ultra-fast & intelligent (Recommended)' },
-                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'Deep reasoning & advanced coding' },
-                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'High-speed multimodal generation' },
-                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'Reliable, low-latency execution' },
+                { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', desc: 'Ultra-fast & latest intelligence (Recommended)' },
+                { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', desc: 'Advanced hybrid reasoning & multimodal' },
+                { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', desc: 'High-speed reliable execution' },
               ].map((m) => {
-                const isSelected = (settings.model || 'gemini-2.5-flash') === m.id;
+                const isSelected = (settings.model || 'gemini-3.8-flash') === m.id;
                 return (
                   <button
                     key={m.id}

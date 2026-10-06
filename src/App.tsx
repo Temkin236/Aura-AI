@@ -6,7 +6,7 @@ import { UserSettings } from './types';
 const DEFAULT_SETTINGS: UserSettings = {
   theme: 'light',
   defaultMode: 'developer',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3.8-flash',
 };
 
 export default function App() {

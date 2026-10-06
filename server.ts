@@ -17,16 +17,37 @@ app.use(express.json({ limit: '5mb' }));
 
 // Supported Gemini models allowlist
 export const ALLOWED_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
   'gemini-flash-latest',
-  'gemini-1.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-pro',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
 ] as const;
 
 export type SupportedModel = (typeof ALLOWED_MODELS)[number];
-export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-flash-latest';
+export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-3.8-flash';
+
+/**
+ * Maps legacy/alias model requests to active Gemini models.
+ */
+function resolveModelName(model: string): string {
+  if (
+    model === 'gemini-2.5-flash' ||
+    model === 'gemini-1.5-flash' ||
+    model === 'gemini-2.0-flash' ||
+    model === 'gemini-flash-latest' ||
+    !model
+  ) {
+    return 'gemini-3.8-flash';
+  }
+  if (model === 'gemini-2.5-pro' || model === 'gemini-1.5-pro') {
+    return 'gemini-3.8-flash';
+  }
+  return model;
+}
 
 /**
  * GET /api/health
@@ -50,7 +71,7 @@ async function callGeminiRest(
   contents: Array<{ role: string; parts: Array<{ text: string }> }>,
   systemInstruction: string
 ): Promise<string> {
-  const modelName = model || 'gemini-flash-latest';
+  const modelName = resolveModelName(model);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
   const response = await fetch(url, {
@@ -117,10 +138,9 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
   }
 
   // 3. Resolve target model & persona system prompt
-  const targetModel: string =
-    typeof model === 'string' && ALLOWED_MODELS.includes(model as SupportedModel)
-      ? model
-      : DEFAULT_GEMINI_MODEL;
+  const targetModel: string = resolveModelName(
+    typeof model === 'string' ? model : DEFAULT_GEMINI_MODEL
+  );
 
   const targetMode = typeof mode === 'string' ? mode : 'developer';
   const systemInstruction = buildSystemPrompt(targetMode);

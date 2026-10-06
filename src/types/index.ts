@@ -38,4 +38,5 @@ export interface UserSettings {
   theme: 'light' | 'dark' | 'system';
   defaultMode: AIModeId;
   model: string;
+  apiKey?: string;
 }

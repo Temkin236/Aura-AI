@@ -98,7 +98,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5] selection:bg-[#DCC9B8] selection:text-[#2B1D17]">
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5] selection:bg-[#DCC9B8] selection:text-[#2B1D17]">
       {/* Primary AURA Chat Interface */}
       <ChatWorkspace
         onOpenSettings={() => setIsSettingsOpen(true)}

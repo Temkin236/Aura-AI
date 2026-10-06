@@ -6,7 +6,16 @@ import { ChatComposer } from './ChatComposer';
 import { WelcomeScreen } from './WelcomeScreen';
 import { AuraSymbol } from '../aura/AuraSymbol';
 import { AI_MODES } from '../../data/modes';
-import { PanelLeft, Sparkles, Moon, Sun, RotateCcw } from 'lucide-react';
+import {
+  PanelLeft,
+  Moon,
+  Sun,
+  Plus,
+  Download,
+  Trash2,
+  ArrowDown,
+  Settings as SettingsIcon,
+} from 'lucide-react';
 
 interface ChatWorkspaceProps {
   onOpenSettings: () => void;
@@ -57,7 +66,9 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -74,7 +85,27 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     } catch {}
   }, [messagesMap]);
 
-  // Auto-scroll to bottom
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+O or Cmd+Shift+O -> New Conversation
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'O' || e.key === 'o' || e.key === 'N' || e.key === 'n')) {
+        e.preventDefault();
+        handleNewConversation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentMode]);
+
+  // Track scroll position to show/hide "Scroll to bottom" button
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isFarFromBottom = scrollHeight - scrollTop - clientHeight > 150;
+    setShowScrollBottom(isFarFromBottom);
+  };
+
   const scrollToBottom = (smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   };
@@ -86,10 +117,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   }, [activeConversationId]);
 
   useEffect(() => {
-    if (isGenerating) {
+    if (isGenerating && !showScrollBottom) {
       scrollToBottom(true);
     }
-  }, [activeMessages, isGenerating]);
+  }, [activeMessages, isGenerating, showScrollBottom]);
 
   // Create New Conversation
   const handleNewConversation = (initialMode: AIModeId = currentMode) => {
@@ -136,6 +167,37 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
     );
+  };
+
+  // Clear active conversation messages
+  const handleClearCurrentChat = () => {
+    if (!activeConversationId) return;
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeConversationId]: [],
+    }));
+  };
+
+  // Export active conversation as Markdown
+  const handleExportChat = () => {
+    if (!activeConversationId || activeMessages.length === 0) return;
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    const title = activeConv ? activeConv.title : 'AURA-AI-Chat';
+
+    let mdText = `# ${title}\n\n*Exported from AURA AI on ${new Date().toLocaleString()}*\n\n---\n\n`;
+
+    activeMessages.forEach((msg) => {
+      const roleName = msg.role === 'user' ? '👤 User' : '✨ AURA AI';
+      mdText += `### ${roleName} (${new Date(msg.timestamp).toLocaleTimeString()})\n\n${msg.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([mdText], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Stop Generation
@@ -236,6 +298,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           history: previousHistory,
           mode,
           model: userSettings.model || 'gemini-2.5-flash',
+          apiKey: userSettings.apiKey,
         }),
         signal: controller.signal,
       });
@@ -319,7 +382,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       if (err.name === 'AbortError') {
         // User aborted intentionally
       } else {
-        const errorMessage = err?.message || "AURA couldn't reach Gemini. Please try again.";
+        const errorMessage = err?.message || "AURA couldn't reach Gemini. Please check your connection.";
         setMessagesMap((prev) => ({
           ...prev,
           [convId!]: (prev[convId!] || []).map((m) =>
@@ -346,7 +409,6 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     const msgs = messagesMap[activeConversationId] || [];
     if (msgs.length === 0) return;
 
-    // Find the last user message
     let lastUserMessageIndex = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') {
@@ -358,7 +420,6 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     if (lastUserMessageIndex === -1) return;
 
     const lastUserMessage = msgs[lastUserMessageIndex];
-    // Trim history back to before this user message
     const trimmedMsgs = msgs.slice(0, lastUserMessageIndex);
 
     setMessagesMap((prev) => ({
@@ -366,14 +427,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       [activeConversationId]: trimmedMsgs,
     }));
 
-    // Resend
     handleSendMessage(lastUserMessage.content, lastUserMessage.mode || currentMode);
   };
 
   const activeConv = conversations.find((c) => c.id === activeConversationId);
+  const activeModeInfo = AI_MODES[currentMode] || AI_MODES.developer;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5]">
+    <div className="flex h-full w-full overflow-hidden bg-[#F8F3ED] dark:bg-[#17110E] text-[#2B1D17] dark:text-[#EDE1D5]">
       {/* Sidebar */}
       <ChatSidebar
         conversations={conversations}
@@ -390,12 +451,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         onOpenSettings={onOpenSettings}
         isDarkMode={isDarkMode}
         onToggleTheme={onToggleTheme}
+        currentModel={userSettings.model}
       />
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 relative">
-        {/* Workspace Top Bar */}
-        <header className="h-14 px-4 flex items-center justify-between border-b border-[#EDE1D5] dark:border-[#2B1D17] bg-[#FCFAF7]/80 dark:bg-[#1E1511]/80 backdrop-blur-md z-10 select-none">
+      <div className="flex-1 flex flex-col h-full min-w-0 relative overflow-hidden">
+        {/* Workspace Header */}
+        <header className="h-12 sm:h-14 px-3 sm:px-4 flex items-center justify-between border-b border-[#EDE1D5] dark:border-[#2B1D17] bg-[#FCFAF7]/80 dark:bg-[#1E1511]/80 backdrop-blur-md z-10 select-none">
           <div className="flex items-center gap-2 min-w-0">
             {/* Sidebar toggle buttons */}
             <button
@@ -406,38 +468,93 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   setIsDesktopSidebarOpen(!isDesktopSidebarOpen);
                 }
               }}
-              className="p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all"
+              className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
               title="Toggle sidebar"
               aria-label="Toggle sidebar"
             >
               <PanelLeft className="w-4 h-4" />
             </button>
 
+            {/* Title & Mode */}
             <div className="flex items-center gap-2 min-w-0 truncate">
               <AuraSymbol size={18} variant="gold" />
-              <h2 className="font-serif font-medium text-sm text-[#2B1D17] dark:text-[#FCFAF7] truncate">
+              <h2 className="font-serif font-medium text-xs sm:text-sm text-[#2B1D17] dark:text-[#FCFAF7] truncate max-w-[150px] sm:max-w-xs md:max-w-md">
                 {activeConv ? activeConv.title : 'AURA AI'}
               </h2>
+              <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#C7A46A] font-medium">
+                {activeModeInfo.name}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* New Chat Quick Button */}
+            <button
+              onClick={() => handleNewConversation()}
+              className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+              title="New Chat (Ctrl+Shift+N)"
+              aria-label="New Chat"
+            >
+              <Plus className="w-4 h-4 text-[#C7A46A]" />
+            </button>
+
+            {/* Export Chat */}
+            {activeMessages.length > 0 && (
+              <button
+                onClick={handleExportChat}
+                className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+                title="Export conversation as Markdown"
+                aria-label="Export conversation"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Clear Chat */}
+            {activeMessages.length > 0 && (
+              <button
+                onClick={handleClearCurrentChat}
+                className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-red-600 dark:hover:text-red-400 hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+                title="Clear current chat"
+                aria-label="Clear chat"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Theme toggle */}
             <button
               onClick={onToggleTheme}
-              className="p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all"
+              className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
               title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
               aria-label="Toggle theme"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-[#C7A46A]" /> : <Moon className="w-4 h-4" />}
             </button>
+
+            {/* Settings */}
+            <button
+              onClick={onOpenSettings}
+              className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
         {/* Message Stream Area */}
-        <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-2 scrollbar-thin">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-2 scrollbar-thin"
+        >
           {activeMessages.length === 0 ? (
             <WelcomeScreen
               currentMode={currentMode}
+              onSelectMode={setCurrentMode}
               onSelectPrompt={(prompt, mode) => {
                 setCurrentMode(mode);
                 handleSendMessage(prompt, mode);
@@ -453,18 +570,32 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               />
             ))
           )}
-          <div ref={messagesEndRef} className="h-4" />
+          <div ref={messagesEndRef} className="h-2 sm:h-4" />
         </div>
 
+        {/* Floating Scroll-to-Bottom Button */}
+        {showScrollBottom && (
+          <div className="absolute bottom-24 right-4 sm:right-8 z-20 animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => scrollToBottom(true)}
+              className="flex items-center gap-1 px-3 py-2 rounded-full bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-xl hover:scale-105 active:scale-95 transition-all text-xs font-medium cursor-pointer"
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="w-3.5 h-3.5 text-[#C7A46A]" />
+              <span>Scroll down</span>
+            </button>
+          </div>
+        )}
+
         {/* Bottom Composer Area */}
-        <div className="p-3 sm:p-4 bg-gradient-to-t from-[#F8F3ED] via-[#F8F3ED] dark:from-[#17110E] dark:via-[#17110E] to-transparent">
+        <div className="p-2 sm:p-4 bg-gradient-to-t from-[#F8F3ED] via-[#F8F3ED] dark:from-[#17110E] dark:via-[#17110E] to-transparent">
           <ChatComposer
             onSendMessage={handleSendMessage}
             onStopGeneration={handleStopGeneration}
             isGenerating={isGenerating}
             currentMode={currentMode}
             onSelectMode={setCurrentMode}
-            placeholder={`Ask AURA in ${AI_MODES[currentMode]?.name || 'Developer'} mode...`}
+            placeholder={`Ask AURA in ${activeModeInfo.name} mode...`}
           />
         </div>
       </div>

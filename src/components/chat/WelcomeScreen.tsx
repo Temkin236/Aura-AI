@@ -2,67 +2,42 @@ import React from 'react';
 import { AuraSymbol } from '../aura/AuraSymbol';
 import { AIModeId } from '../../types';
 import { AI_MODES } from '../../data/modes';
-import { Sparkles, Code, BookOpen, Lightbulb, GraduationCap } from 'lucide-react';
+import { Sparkles, Code, BookOpen, Coffee, Target, ArrowRight } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onSelectPrompt: (promptText: string, mode: AIModeId) => void;
   currentMode: AIModeId;
+  onSelectMode?: (mode: AIModeId) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onSelectPrompt,
-  currentMode
+  currentMode,
+  onSelectMode,
 }) => {
-  const currentModeInfo = AI_MODES[currentMode];
+  const currentModeInfo = AI_MODES[currentMode] || AI_MODES.developer;
 
-  const suggestionCards = [
-    {
-      title: 'Explain Python simply',
-      category: 'Programming',
-      prompt: 'Explain how Python handles asynchronous programming with asyncio, in simple terms with a clear mental model.',
-      icon: <Code className="w-4 h-4 text-[#C7A46A]" />,
-      mode: 'developer' as AIModeId
-    },
-    {
-      title: 'Teach me how RAG works',
-      category: 'AI Architecture',
-      prompt: 'Teach me how Retrieval-Augmented Generation (RAG) works from first principles, with an intuitive analogy.',
-      icon: <BookOpen className="w-4 h-4 text-[#C7A46A]" />,
-      mode: 'tutor' as AIModeId
-    },
-    {
-      title: 'Help me debug this code',
-      category: 'Software Engineering',
-      prompt: 'I want to review and debug a function for performance bottlenecks and edge cases. What should I share first?',
-      icon: <Sparkles className="w-4 h-4 text-[#C7A46A]" />,
-      mode: 'developer' as AIModeId
-    },
-    {
-      title: 'Give me a project idea',
-      category: 'Creative Exploration',
-      prompt: 'Give me 3 original and sophisticated project concepts combining modern AI with thoughtful editorial design.',
-      icon: <Lightbulb className="w-4 h-4 text-[#C7A46A]" />,
-      mode: 'creative' as AIModeId
-    },
-    {
-      title: 'Help me study',
-      category: 'Deep Learning',
-      prompt: 'I am preparing for an interview or exam. Act as my thoughtful tutor and guide me through key concepts.',
-      icon: <GraduationCap className="w-4 h-4 text-[#C7A46A]" />,
-      mode: 'tutor' as AIModeId
-    }
-  ];
+  const modeIcons: Record<AIModeId, React.ReactNode> = {
+    friendly: <Coffee className="w-4 h-4 text-[#C7A46A]" />,
+    developer: <Code className="w-4 h-4 text-[#C7A46A]" />,
+    tutor: <BookOpen className="w-4 h-4 text-[#C7A46A]" />,
+    creative: <Sparkles className="w-4 h-4 text-[#C7A46A]" />,
+    professional: <Target className="w-4 h-4 text-[#C7A46A]" />,
+  };
+
+  // Specific curated prompts for the active persona + standard rich exploration
+  const personaPrompts = currentModeInfo.suggestedPrompts || [];
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 py-5 sm:py-8 max-w-3xl mx-auto w-full text-center">
-      {/* Centered Elegant AURA Symbol */}
-      <div className="mb-4 sm:mb-6 relative">
+    <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6 py-6 sm:py-10 max-w-3xl mx-auto w-full text-center">
+      {/* Centered AURA Emblem */}
+      <div className="mb-4 sm:mb-6">
         <AuraSymbol
-          size={52}
+          size={56}
           glow={true}
           animated={true}
           variant="gold"
-          className="transition-transform hover:scale-105 duration-300 sm:scale-110"
+          className="transition-transform hover:scale-105 duration-300"
         />
       </div>
 
@@ -72,68 +47,54 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </h1>
 
       {/* Subheadline */}
-      <p className="text-sm sm:text-base md:text-lg text-[#6B493B] dark:text-[#DCC9B8] max-w-xl mx-auto leading-relaxed mb-5 sm:mb-8 font-sans font-normal">
-        Ask AURA anything. Learn, build, write, or simply think out loud.
+      <p className="text-sm sm:text-base text-[#6B493B] dark:text-[#DCC9B8] max-w-lg mx-auto leading-relaxed mb-6 font-sans">
+        Ask AURA anything. Learn, build, write, or simply brainstorm your ideas.
       </p>
 
-      {/* Active mode indicator */}
-      <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] text-xs text-[#4A3026] dark:text-[#DCC9B8] mb-5 sm:mb-8 shadow-xs">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#C7A46A]" />
-        <span>Currently in <strong>{currentModeInfo.name}</strong> mode:</span>
-        <span className="text-[#8A7A70] dark:text-[#8A6756] hidden sm:inline">{currentModeInfo.tagline}</span>
-      </div>
+      {/* Persona Mode Switcher Pills */}
+      {onSelectMode && (
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-6 sm:mb-8">
+          {(Object.keys(AI_MODES) as AIModeId[]).map((modeId) => {
+            const isSelected = modeId === currentMode;
+            const mode = AI_MODES[modeId];
+            return (
+              <button
+                key={modeId}
+                onClick={() => onSelectMode(modeId)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#2B1D17] dark:bg-[#FCFAF7] text-[#FCFAF7] dark:text-[#2B1D17] shadow-sm scale-105'
+                    : 'bg-[#EDE1D5]/50 dark:bg-[#211814] text-[#6B493B] dark:text-[#DCC9B8] hover:bg-[#EDE1D5] dark:hover:bg-[#2B1D17]'
+                }`}
+              >
+                <span>{modeIcons[modeId]}</span>
+                <span>{mode.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Suggestion Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full text-left">
-        {suggestionCards.slice(0, 5).map((card, idx) => (
+      {/* Suggestion Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full text-left">
+        {personaPrompts.slice(0, 4).map((promptText, idx) => (
           <button
             key={idx}
             type="button"
-            onClick={() => onSelectPrompt(card.prompt, card.mode)}
-            className="group relative p-3.5 sm:p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px]"
+            onClick={() => onSelectPrompt(promptText, currentMode)}
+            className="group relative p-3.5 sm:p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 text-left"
           >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-medium text-[#8A7A70] dark:text-[#8A6756]">
-                  {card.category}
-                </span>
-                <div className="p-1 rounded-md bg-[#EDE1D5]/50 dark:bg-[#17110E] group-hover:scale-110 transition-transform">
-                  {card.icon}
-                </div>
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="p-2 rounded-xl bg-[#EDE1D5]/50 dark:bg-[#17110E] text-[#C7A46A] flex-shrink-0 group-hover:scale-110 transition-transform mt-0.5">
+                {modeIcons[currentMode]}
               </div>
-              <h3 className="text-sm font-semibold text-[#2B1D17] dark:text-[#FCFAF7] group-hover:text-[#4A3026] transition-colors leading-snug">
-                {card.title}
-              </h3>
+              <p className="text-xs sm:text-sm font-medium text-[#2B1D17] dark:text-[#EDE1D5] leading-snug line-clamp-2">
+                {promptText}
+              </p>
             </div>
-            <p className="text-xs text-[#8A6756] dark:text-[#8A7A70] line-clamp-2 mt-2 leading-relaxed">
-              {card.prompt}
-            </p>
+            <ArrowRight className="w-4 h-4 text-[#8A7A70] group-hover:text-[#C7A46A] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
           </button>
         ))}
-
-        {/* 6th Card - Free thought card */}
-        <button
-          type="button"
-          onClick={() => onSelectPrompt('I have an idea I want to think through with you. Help me explore it from multiple angles.', 'friendly')}
-          className="group relative p-3.5 sm:p-4 rounded-2xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8]/70 dark:border-[#3A2921] hover:border-[#C7A46A] hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px]"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-medium text-[#8A7A70] dark:text-[#8A6756]">
-                Brainstorming
-              </span>
-              <div className="p-1 rounded-md bg-[#EDE1D5]/50 dark:bg-[#17110E] group-hover:scale-110 transition-transform">
-                <Sparkles className="w-4 h-4 text-[#C7A46A]" />
-              </div>
-            </div>
-            <h3 className="text-sm font-semibold text-[#2B1D17] dark:text-[#FCFAF7] group-hover:text-[#4A3026] transition-colors leading-snug">
-              Think out loud
-            </h3>
-          </div>
-          <p className="text-xs text-[#8A6756] dark:text-[#8A7A70] line-clamp-2 mt-2 leading-relaxed">
-            Unpack a complex decision or fresh creative concept together.
-          </p>
-        </button>
       </div>
     </div>
   );

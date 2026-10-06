@@ -47,7 +47,7 @@ app.get('/api/health', (_req: Request, res: Response): void => {
 app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> => {
   const rawText = req.body.message ?? req.body.prompt;
   const message = typeof rawText === 'string' ? rawText.trim() : '';
-  const { history, mode = 'developer', model } = req.body;
+  const { history, mode = 'developer', model, apiKey: clientApiKey } = req.body;
 
   // 1. Validate incoming message
   if (!message) {
@@ -95,12 +95,21 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
-  // 5. Verify Gemini API key configuration
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) {
+  let clientAborted = false;
+  req.on('close', () => {
+    clientAborted = true;
+  });
+
+  // 5. Resolve active API key (from client payload or server env)
+  const activeApiKey = (typeof clientApiKey === 'string' && clientApiKey.trim())
+    ? clientApiKey.trim()
+    : process.env.GEMINI_API_KEY?.trim();
+
+  if (!activeApiKey) {
     res.write(
       `data: ${JSON.stringify({
-        error: 'Gemini API key is not configured. Add GEMINI_API_KEY to your server environment.',
+        error:
+          'Google Gemini API Key is required for live AI responses. Please click Settings (⚙️) in the top right and enter your Gemini API Key, or set GEMINI_API_KEY in your .env file.',
       })}\n\n`
     );
     res.write('data: [DONE]\n\n');
@@ -111,7 +120,7 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
   // 6. Stream real response from Google Gemini
   try {
     const ai = new GoogleGenAI({
-      apiKey,
+      apiKey: activeApiKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aura-ai/0.2.0',
@@ -143,11 +152,6 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    let clientAborted = false;
-    req.on('close', () => {
-      clientAborted = true;
-    });
-
     for await (const chunk of responseStream) {
       if (clientAborted) break;
       const text = chunk.text;
@@ -165,10 +169,10 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
 
     const errorMessage =
       err?.message?.includes('API_KEY_INVALID') || err?.message?.includes('API key not valid')
-        ? 'Invalid Gemini API key. Please verify your GEMINI_API_KEY in .env.'
+        ? 'Invalid Gemini API key. Please verify your GEMINI_API_KEY in Settings or in .env.'
         : err?.status === 429 || err?.message?.includes('quota') || err?.message?.includes('RESOURCE_EXHAUSTED')
         ? 'Gemini rate limit exceeded. Please wait a moment and try again.'
-        : err?.message || "AURA couldn't reach Gemini. Please check your connection and try again.";
+        : err?.message || "AURA couldn't reach Gemini. Please check your connection.";
 
     res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
     res.write('data: [DONE]\n\n');

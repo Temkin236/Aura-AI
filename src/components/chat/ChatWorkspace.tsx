@@ -374,7 +374,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         ...prev,
         [convId!]: (prev[convId!] || []).map((m) =>
           m.id === assistantMsgId
-            ? { ...m, content: accumulatedContent || 'No response generated.', isStreaming: false }
+            ? {
+                ...m,
+                content:
+                  accumulatedContent ||
+                  'No response received. Please ensure the server is restarted with `npm run dev` and check your API key in Settings.',
+                isStreaming: false,
+              }
             : m
         ),
       }));

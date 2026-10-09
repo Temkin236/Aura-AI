@@ -16,29 +16,20 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 app.use(express.json({ limit: '5mb' }));
 
 export const ALLOWED_MODELS = [
+  'gemini-2.0-flash',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
-  'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro',
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
 ] as const;
 
 export type SupportedModel = (typeof ALLOWED_MODELS)[number];
-export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-2.5-flash';
+export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-2.0-flash';
 
 export function resolveModelName(model: string): string {
-  if (
-    !model ||
-    model.includes('3.') ||
-    model.includes('flash-latest') ||
-    model === 'gemini-2.5-flash'
-  ) {
-    return 'gemini-2.5-flash';
-  }
-  if (model.includes('pro')) {
-    return 'gemini-2.5-pro';
+  if (!model) return DEFAULT_GEMINI_MODEL;
+  if (model.includes('3.') || model.includes('latest')) {
+    return 'gemini-2.0-flash';
   }
   return model;
 }

@@ -17,6 +17,7 @@ Provide clear, engaging, helpful answers without robotic phrasing or unnecessary
       'What are some mindful rituals to start the day?',
       'Let’s brainstorm gift ideas for someone special',
       'Talk through a decision I’ve been hesitating on',
+      'Give me an uplifting perspective on navigating creative block',
     ],
   },
   developer: {
@@ -36,6 +37,7 @@ Use clean markdown code blocks with explicit language tags.`,
       'Teach me how RAG works with vector embeddings',
       'Help me debug this memory leak or race condition',
       'Design a scalable event-driven architecture pattern',
+      'Review best practices for state management in React 19',
     ],
   },
   tutor: {
@@ -54,6 +56,7 @@ Always invite questions and verify understanding.`,
       'Teach me calculus from first principles',
       'How does gradient descent actually work mathematically?',
       'Help me study and quiz me on behavioral economics',
+      'Deconstruct Special Relativity and time dilation simply',
     ],
   },
   creative: {
@@ -72,6 +75,7 @@ When brainstorming, offer divergent, bold, and aesthetically compelling perspect
       'Give me a unique project idea blending AI with botany',
       'Help me craft a subtle, memorable luxury brand manifesto',
       'Compose poetry exploring memory, architecture, and light',
+      'Outline an intriguing speculative fiction plot twist',
     ],
   },
   professional: {
@@ -90,6 +94,7 @@ Organize points with clear hierarchies, actionable recommendations, and data-dri
       'Structure a framework for evaluating market expansion',
       'Critique this client proposal for clarity and impact',
       'Prepare strategic talking points for an investor meeting',
+      'Synthesize key OKRs for high-growth engineering teams',
     ],
   },
 };

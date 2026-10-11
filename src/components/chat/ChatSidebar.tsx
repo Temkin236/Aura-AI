@@ -50,7 +50,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onOpenSettings,
   isDarkMode,
   onToggleTheme,
-  currentModel = 'gemini-2.5-flash',
+  currentModel = 'gemini-3.8-flash',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);

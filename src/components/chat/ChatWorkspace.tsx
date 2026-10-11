@@ -88,15 +88,20 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Shift+O or Cmd+Shift+O -> New Conversation
+      // Ctrl+Shift+N or Cmd+Shift+N -> New Conversation
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'O' || e.key === 'o' || e.key === 'N' || e.key === 'n')) {
         e.preventDefault();
         handleNewConversation();
       }
+      // Ctrl+, or Cmd+, -> Open Settings
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        onOpenSettings();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentMode]);
+  }, [currentMode, onOpenSettings]);
 
   // Track scroll position to show/hide "Scroll to bottom" button
   const handleScroll = () => {

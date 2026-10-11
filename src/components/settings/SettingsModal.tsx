@@ -23,6 +23,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey || '');
 
+  // Handle Escape key to close modal
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSaveApiKey = (value: string) => {
@@ -214,9 +226,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </kbd>
               </div>
               <div className="p-2 rounded-lg bg-[#EDE1D5]/40 dark:bg-[#17110E] flex items-center justify-between">
+                <span className="text-[#6B493B] dark:text-[#DCC9B8]">Settings</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-[#FCFAF7] dark:bg-[#2B1D17] border border-[#DCC9B8] dark:border-[#3A2921] text-[10px] font-mono">
+                  Ctrl+,
+                </kbd>
+              </div>
+              <div className="p-2 rounded-lg bg-[#EDE1D5]/40 dark:bg-[#17110E] flex items-center justify-between">
                 <span className="text-[#6B493B] dark:text-[#DCC9B8]">Send Message</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-[#FCFAF7] dark:bg-[#2B1D17] border border-[#DCC9B8] dark:border-[#3A2921] text-[10px] font-mono">
                   Enter
+                </kbd>
+              </div>
+              <div className="p-2 rounded-lg bg-[#EDE1D5]/40 dark:bg-[#17110E] flex items-center justify-between">
+                <span className="text-[#6B493B] dark:text-[#DCC9B8]">Close Modal</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-[#FCFAF7] dark:bg-[#2B1D17] border border-[#DCC9B8] dark:border-[#3A2921] text-[10px] font-mono">
+                  Esc
                 </kbd>
               </div>
             </div>

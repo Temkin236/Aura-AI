@@ -144,6 +144,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <span className="font-serif italic text-xs">AURA is composing...</span>
             </div>
           )}
+
+          {/* Response Metrics Footer */}
+          {!message.isStreaming && !message.isError && message.content && (
+            <div className="flex items-center gap-2 text-[10px] text-[#8A7A70] dark:text-[#8A6756] pt-1 select-none">
+              <span>
+                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span>•</span>
+              <span>
+                {message.content.trim().split(/\s+/).filter(Boolean).length} words
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -188,12 +188,21 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     if (!activeConversationId || activeMessages.length === 0) return;
     const activeConv = conversations.find((c) => c.id === activeConversationId);
     const title = activeConv ? activeConv.title : 'AURA-AI-Chat';
+    const totalWords = activeMessages.reduce(
+      (acc, m) => acc + (m.content ? m.content.trim().split(/\s+/).filter(Boolean).length : 0),
+      0
+    );
 
-    let mdText = `# ${title}\n\n*Exported from AURA AI on ${new Date().toLocaleString()}*\n\n---\n\n`;
+    let mdText = `# ${title}\n\n`;
+    mdText += `> **Model**: ${userSettings.model || 'gemini-3.8-flash'}  \n`;
+    mdText += `> **Mode**: ${AI_MODES[currentMode]?.name || 'Developer'}  \n`;
+    mdText += `> **Messages**: ${activeMessages.length} | **Total Words**: ${totalWords}  \n`;
+    mdText += `> *Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
 
     activeMessages.forEach((msg) => {
-      const roleName = msg.role === 'user' ? '👤 User' : '✨ AURA AI';
-      mdText += `### ${roleName} (${new Date(msg.timestamp).toLocaleTimeString()})\n\n${msg.content}\n\n---\n\n`;
+      const modeTag = msg.mode && AI_MODES[msg.mode] ? ` [${AI_MODES[msg.mode].name}]` : '';
+      const roleName = msg.role === 'user' ? '👤 User' : `✨ AURA AI${modeTag}`;
+      mdText += `### ${roleName} (${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})\n\n${msg.content}\n\n---\n\n`;
     });
 
     const blob = new Blob([mdText], { type: 'text/markdown;charset=utf-8;' });

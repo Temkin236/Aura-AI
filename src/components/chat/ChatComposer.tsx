@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AIModeId } from '../../types';
 import { ModeSelector } from './ModeSelector';
-import { ArrowUp, Square } from 'lucide-react';
+import { ArrowUp, Square, X } from 'lucide-react';
 
 interface ChatComposerProps {
   onSendMessage: (text: string, mode: AIModeId) => void;
@@ -63,24 +63,45 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         className="relative rounded-2xl sm:rounded-3xl bg-[#FCFAF7] dark:bg-[#1E1511] border border-[#DCC9B8] dark:border-[#3A2921] shadow-lg focus-within:border-[#C7A46A] dark:focus-within:border-[#C7A46A] transition-all p-2 sm:p-3"
       >
         {/* Text Input Area */}
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isGenerating ? 'Generating response...' : placeholder}
-          rows={1}
-          disabled={isGenerating}
-          className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none resize-none px-2 py-1 text-sm sm:text-base text-[#2B1D17] dark:text-[#EDE1D5] placeholder:text-[#8A7A70] dark:placeholder:text-[#8A6756] max-h-[180px] leading-relaxed scrollbar-thin"
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isGenerating ? 'Generating response...' : placeholder}
+            rows={1}
+            disabled={isGenerating}
+            maxLength={20000}
+            className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none resize-none px-2 py-1 pr-7 text-sm sm:text-base text-[#2B1D17] dark:text-[#EDE1D5] placeholder:text-[#8A7A70] dark:placeholder:text-[#8A6756] max-h-[180px] leading-relaxed scrollbar-thin"
+          />
+          {input.length > 0 && !isGenerating && (
+            <button
+              type="button"
+              onClick={() => {
+                setInput('');
+                if (textareaRef.current) textareaRef.current.style.height = 'auto';
+              }}
+              className="absolute right-1 top-2 p-1 rounded-md text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#EDE1D5] transition-colors"
+              title="Clear input"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
 
         {/* Footer Toolbar: Persona Selector & Action Button */}
         <div className="flex items-center justify-between pt-1.5 border-t border-[#EDE1D5]/60 dark:border-[#2B1D17]/60 mt-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <ModeSelector
               currentMode={currentMode}
               onSelectMode={onSelectMode}
             />
+            {input.length > 100 && (
+              <span className="text-[10px] text-[#8A7A70] dark:text-[#8A6756]">
+                {input.length.toLocaleString()}/20,000
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

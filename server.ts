@@ -257,8 +257,13 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
     } catch (err: any) {
       const fallback = generatePersonaFallback(message, targetMode);
       if (!clientAborted) {
-        res.write(`data: ${JSON.stringify({ text: fallback })}\n\n`);
-        res.write('data: [DONE]\n\n');
+        const chunks = fallback.match(/.{1,40}/g) || [fallback];
+        for (const chunk of chunks) {
+          if (clientAborted) break;
+          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+          if (!isTestEnv) await new Promise((r) => setTimeout(r, 15));
+        }
+        if (!clientAborted) res.write('data: [DONE]\n\n');
       }
       res.end();
     }

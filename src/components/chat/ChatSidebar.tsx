@@ -15,6 +15,7 @@ import {
   Check,
   PanelLeftClose,
   Pin,
+  Copy,
 } from 'lucide-react';
 
 interface ChatSidebarProps {
@@ -25,6 +26,7 @@ interface ChatSidebarProps {
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, newTitle: string) => void;
   onTogglePinConversation?: (id: string) => void;
+  onDuplicateConversation?: (id: string) => void;
   isDesktopOpen: boolean;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
@@ -43,6 +45,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onDeleteConversation,
   onRenameConversation,
   onTogglePinConversation,
+  onDuplicateConversation,
   isDesktopOpen,
   isMobileOpen,
   onCloseMobile,
@@ -229,6 +232,18 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       <Edit2 className="w-3 h-3" />
                       <span>Rename</span>
                     </button>
+                    {onDuplicateConversation && (
+                      <button
+                        onClick={() => {
+                          onDuplicateConversation(conv.id);
+                          setActiveMenuId(null);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#4A3026] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17]"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Duplicate</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         onDeleteConversation(conv.id);

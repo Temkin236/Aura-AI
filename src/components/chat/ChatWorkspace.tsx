@@ -174,6 +174,36 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     );
   };
 
+  // Duplicate Conversation
+  const handleDuplicateConversation = (id: string) => {
+    const target = conversations.find((c) => c.id === id);
+    if (!target) return;
+
+    const newId = generateId();
+    const existingMessages = messagesMap[id] || [];
+    const clonedMessages = existingMessages.map((m) => ({
+      ...m,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      conversationId: newId,
+    }));
+
+    const newConv: Conversation = {
+      ...target,
+      id: newId,
+      title: `${target.title} (Copy)`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      pinned: false,
+    };
+
+    setConversations((prev) => [newConv, ...prev]);
+    setMessagesMap((prev) => ({
+      ...prev,
+      [newId]: clonedMessages,
+    }));
+    setActiveConversationId(newId);
+  };
+
   // Clear active conversation messages
   const handleClearCurrentChat = () => {
     if (!activeConversationId) return;
@@ -464,6 +494,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
         onTogglePinConversation={handleTogglePin}
+        onDuplicateConversation={handleDuplicateConversation}
         isDesktopOpen={isDesktopSidebarOpen}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}

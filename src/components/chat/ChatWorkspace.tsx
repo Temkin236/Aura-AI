@@ -15,6 +15,8 @@ import {
   Trash2,
   ArrowDown,
   Settings as SettingsIcon,
+  FileText,
+  FileJson,
 } from 'lucide-react';
 
 interface ChatWorkspaceProps {
@@ -67,6 +69,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -242,6 +245,33 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
     a.click();
     URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
+  };
+
+  // Export active conversation as JSON
+  const handleExportChatJson = () => {
+    if (!activeConversationId || activeMessages.length === 0) return;
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    const title = activeConv ? activeConv.title : 'AURA-AI-Chat';
+    const payload = {
+      version: '0.2.0',
+      exportedAt: new Date().toISOString(),
+      conversation: activeConv,
+      settings: {
+        model: userSettings.model || 'gemini-3.8-flash',
+        mode: currentMode,
+      },
+      messages: activeMessages,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-backup.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
   };
 
   // Stop Generation
@@ -552,14 +582,41 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
             {/* Export Chat */}
             {activeMessages.length > 0 && (
-              <button
-                onClick={handleExportChat}
-                className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
-                title="Export conversation as Markdown"
-                aria-label="Export conversation"
-              >
-                <Download className="w-4 h-4" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                  className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+                  title="Export conversation"
+                  aria-label="Export conversation"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+
+                {isExportMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 rounded-xl bg-[#FCFAF7] dark:bg-[#211814] border border-[#DCC9B8] dark:border-[#3A2921] shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <button
+                      onClick={handleExportChat}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#4A3026] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] text-left"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-[#C7A46A]" />
+                      <div>
+                        <p className="font-medium">Markdown (.md)</p>
+                        <p className="text-[10px] text-[#8A7A70]">Formatted document</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportChatJson}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#4A3026] dark:text-[#DCC9B8] hover:bg-[#EDE1D5]/50 dark:hover:bg-[#2B1D17] text-left"
+                    >
+                      <FileJson className="w-3.5 h-3.5 text-[#C7A46A]" />
+                      <div>
+                        <p className="font-medium">JSON Backup (.json)</p>
+                        <p className="text-[10px] text-[#8A7A70]">Full chat session data</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Clear Chat */}

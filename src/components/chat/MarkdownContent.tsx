@@ -33,6 +33,26 @@ export interface CodeBlockProps {
   code: string;
 }
 
+const LANGUAGE_COLORS: Record<string, string> = {
+  ts: '#3178c6',
+  typescript: '#3178c6',
+  js: '#f7df1e',
+  javascript: '#f7df1e',
+  tsx: '#3178c6',
+  jsx: '#61dafb',
+  py: '#3572a5',
+  python: '#3572a5',
+  rust: '#dea584',
+  go: '#00add8',
+  html: '#e34f26',
+  css: '#563d7c',
+  json: '#c7a46a',
+  bash: '#89e051',
+  shell: '#89e051',
+  sh: '#89e051',
+  sql: '#e38c00',
+};
+
 export const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -49,13 +69,17 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
 
   const lineCount = code.trim().split('\n').length;
   const isCollapsible = lineCount > 18;
+  const langColor = LANGUAGE_COLORS[language.toLowerCase()] || '#C7A46A';
 
   return (
     <div className="my-4 rounded-xl overflow-hidden border border-[#3A2921]/40 shadow-sm bg-[#1E1511] text-[#EDE1D5] transition-all">
       {/* Code Header */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#17110E] border-b border-[#3A2921]/50 text-xs font-medium">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#C7A46A]/60" />
+          <span
+            className="w-2.5 h-2.5 rounded-full shadow-xs"
+            style={{ backgroundColor: langColor }}
+          />
           <span className="text-[#DCC9B8] font-mono uppercase tracking-wider text-[11px]">
             {language}
           </span>

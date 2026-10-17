@@ -155,6 +155,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <span>
                 {message.content.trim().split(/\s+/).filter(Boolean).length} words
               </span>
+              {typeof message.durationMs === 'number' && message.durationMs > 0 && (
+                <>
+                  <span>•</span>
+                  <span>{(message.durationMs / 1000).toFixed(1)}s</span>
+                </>
+              )}
             </div>
           )}
         </div>

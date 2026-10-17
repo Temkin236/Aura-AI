@@ -22,6 +22,7 @@ export interface Message {
   model?: string;
   isStreaming?: boolean;
   isError?: boolean;
+  durationMs?: number;
 }
 
 export interface Conversation {

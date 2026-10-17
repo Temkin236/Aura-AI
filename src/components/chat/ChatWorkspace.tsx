@@ -356,6 +356,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }));
 
     setIsGenerating(true);
+    const startTime = Date.now();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -444,6 +445,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       }
 
       // Mark generation complete
+      const durationMs = Date.now() - startTime;
       setMessagesMap((prev) => ({
         ...prev,
         [convId!]: (prev[convId!] || []).map((m) =>
@@ -454,6 +456,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   accumulatedContent ||
                   'No response received. Please ensure the server is restarted with `npm run dev` and check your API key in Settings.',
                 isStreaming: false,
+                durationMs,
               }
             : m
         ),

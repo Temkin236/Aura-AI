@@ -2,7 +2,6 @@
 
 AURA AI is a simple, elegant, and fully functional AI chatbot powered by Google Gemini, designed with luxury editorial aesthetics and real-time streaming responses.
 
----
 
 ## Features
 

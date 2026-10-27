@@ -165,21 +165,21 @@ app.post('/api/settings', async (req: Request, res: Response): Promise<void> => 
 function generatePersonaFallback(prompt: string, mode: string = 'developer'): string {
   switch (mode) {
     case 'developer':
-      return `### Architectural Solution
+      return `**Architectural Solution**
 
 Regarding: **"${prompt}"**
 
 > [!TIP]
 > Prioritize immutable data flow and asynchronous boundaries with graceful backpressure handling.
 
-#### 1. Architectural Strategy
+**1. Architectural Strategy**
 | Layer | Core Responsibility | Key Mechanism |
 | :--- | :--- | :--- |
 | **Ingress** | Input validation & sanitization | Schema validation, rate limits |
 | **Execution** | Async task scheduling | Non-blocking Event Loop |
 | **Persistence** | Resilient storage & caching | In-memory cache + write-through |
 
-#### 2. Implementation Specification
+**2. Implementation Specification**
 \`\`\`typescript
 export interface TaskPayload<T = unknown> {
   id: string;
@@ -200,22 +200,22 @@ export async function processTask<T>(payload: TaskPayload<T>): Promise<{ success
 }
 \`\`\`
 
-- [x] Strict type-safety with generic payload constraints
-- [x] Comprehensive timing instrumentation
-- [ ] Add your Gemini API Key in **Settings (⚙️)** for live streaming generation`;
+- Strict type-safety with generic payload constraints
+- Comprehensive timing instrumentation
+- Add your Gemini API Key in **Settings (⚙️)** for live streaming generation`;
 
     case 'tutor':
-      return `### First Principles Breakdown
+      return `**First Principles Breakdown**
 
 Let's explore: **"${prompt}"**
 
 > [!NOTE]
 > Every complex concept is simply an accumulation of intuitive, basic principles stacked logically.
 
-#### Step 1: The Core Intuition
+**Step 1: The Core Intuition**
 Imagine a relay race where each runner represents a discrete transformation. The batons passed between them are your data structures.
 
-#### Step 2: Conceptual Mapping
+**Step 2: Conceptual Mapping**
 | Concept | Everyday Analogy | Technical Reality |
 | :--- | :--- | :--- |
 | **Abstraction** | Car steering wheel | Hiding mechanical complexity behind simple controls |
@@ -227,7 +227,7 @@ Imagine a relay race where each runner represents a discrete transformation. The
 *Add your Gemini API Key in **Settings (⚙️)** for interactive live Socratic dialogues.*`;
 
     case 'creative':
-      return `### Creative Reflection
+      return `**Creative Reflection**
 
 *Exploring the contours of: "${prompt}"*
 
@@ -243,27 +243,27 @@ Atmosphere and resonance intertwine:
 *Add your Gemini API Key in **Settings (⚙️)** for open-ended poetic and narrative generation.*`;
 
     case 'professional':
-      return `### Executive Strategic Synthesis
+      return `**Executive Strategic Synthesis**
 
 **Subject**: ${prompt}
 
 > [!IMPORTANT]
 > Targeted for immediate executive clarity: minimize operational overhead while maximizing signal-to-noise ratio.
 
-#### Strategic Evaluation Matrix
+**Strategic Evaluation Matrix**
 | Workstream | Priority | Key Milestone | Target Impact |
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | Immediate | Architectural Discovery | Establish baseline metrics |
 | **Phase 2** | Mid-term | Structured Rollout | 40% reduction in cycle friction |
 | **Phase 3** | Long-term | Observability & Governance | Autonomous resilience |
 
-#### Actionable Recommendations
-- [x] Validate resource attribution and environment variables
-- [x] Establish automated integration verification
-- [ ] Add your Gemini API Key in **Settings (⚙️)** for real-time executive advisory`;
+**Actionable Recommendations**
+- Validate resource attribution and environment variables
+- Establish automated integration verification
+- Add your Gemini API Key in **Settings (⚙️)** for real-time executive advisory`;
 
     default:
-      return `### AURA Intelligent Companion ✨
+      return `**AURA Intelligent Companion** ✨
 
 Regarding **"${prompt}"**:
 

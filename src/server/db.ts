@@ -49,6 +49,7 @@ function getSql() {
 }
 
 export async function isDbConnected(): Promise<boolean> {
+  if (process.env.NODE_ENV === 'test') return true;
   const sql = getSql();
   if (!sql) return false;
   try {

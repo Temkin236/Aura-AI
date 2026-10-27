@@ -222,7 +222,13 @@ function tokenizeLine(line: string): React.ReactNode {
 
 // Text formatter for markdown headings, bold, italic, lists, quotes, inline code, callouts, tables, and rules
 const FormattedText: React.FC<{ text: string }> = ({ text }) => {
-  const paragraphs = text.split('\n\n').filter((p) => p.trim() !== '');
+  // Normalize newlines and ensure headings (# ... ######) have clear block boundaries even if separated by a single newline
+  const normalizedText = text
+    .replace(/\r\n/g, '\n')
+    .replace(/([^\n])\n(#{1,6}\s+)/g, '$1\n\n$2')
+    .replace(/^(#{1,6}\s+[^\n]+)\n([^\n#])/gm, '$1\n\n$2');
+
+  const paragraphs = normalizedText.split('\n\n').filter((p) => p.trim() !== '');
 
   return (
     <>
@@ -239,52 +245,69 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
           );
         }
 
-        // Heading 1
-        if (trimmed.startsWith('# ')) {
-          return (
-            <h1
-              key={idx}
-              className="text-2xl sm:text-3xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-6 mb-3 border-b border-[#DCC9B8]/40 dark:border-[#3A2921] pb-2"
-            >
-              {renderInlineStyles(trimmed.slice(2))}
-            </h1>
-          );
-        }
+        // Headings (H1 through H6: # to ######) — Strip raw hash signs and render elegant typography
+        const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (headingMatch) {
+          const level = headingMatch[1].length;
+          const headingText = headingMatch[2];
 
-        // Heading 2
-        if (trimmed.startsWith('## ')) {
-          return (
-            <h2
-              key={idx}
-              className="text-xl sm:text-2xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-5 mb-2.5"
-            >
-              {renderInlineStyles(trimmed.slice(3))}
-            </h2>
-          );
-        }
-
-        // Heading 3
-        if (trimmed.startsWith('### ')) {
-          return (
-            <h3
-              key={idx}
-              className="text-lg font-serif font-semibold text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-4 mb-2"
-            >
-              {renderInlineStyles(trimmed.slice(4))}
-            </h3>
-          );
-        }
-
-        // Heading 4
-        if (trimmed.startsWith('#### ')) {
-          return (
-            <h4
-              key={idx}
-              className="text-base font-semibold text-[#4A3026] dark:text-[#DCC9B8] mt-3 mb-1.5"
-            >
-              {renderInlineStyles(trimmed.slice(5))}
-            </h4>
-          );
+          switch (level) {
+            case 1:
+              return (
+                <h1
+                  key={idx}
+                  className="text-2xl sm:text-3xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-6 mb-3 border-b border-[#DCC9B8]/40 dark:border-[#3A2921] pb-2"
+                >
+                  {renderInlineStyles(headingText)}
+                </h1>
+              );
+            case 2:
+              return (
+                <h2
+                  key={idx}
+                  className="text-xl sm:text-2xl font-serif font-medium text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-5 mb-2.5"
+                >
+                  {renderInlineStyles(headingText)}
+                </h2>
+              );
+            case 3:
+              return (
+                <h3
+                  key={idx}
+                  className="text-lg font-serif font-semibold text-[#2B1D17] dark:text-[#FCFAF7] tracking-tight mt-4 mb-2"
+                >
+                  {renderInlineStyles(headingText)}
+                </h3>
+              );
+            case 4:
+              return (
+                <h4
+                  key={idx}
+                  className="text-base font-semibold text-[#4A3026] dark:text-[#DCC9B8] mt-3 mb-1.5"
+                >
+                  {renderInlineStyles(headingText)}
+                </h4>
+              );
+            case 5:
+              return (
+                <h5
+                  key={idx}
+                  className="text-sm font-semibold text-[#4A3026] dark:text-[#E2D4C8] uppercase tracking-wider mt-3 mb-1"
+                >
+                  {renderInlineStyles(headingText)}
+                </h5>
+              );
+            case 6:
+            default:
+              return (
+                <h6
+                  key={idx}
+                  className="text-xs font-semibold text-[#6B493B] dark:text-[#C7A46A] uppercase tracking-widest mt-2.5 mb-1"
+                >
+                  {renderInlineStyles(headingText)}
+                </h6>
+              );
+          }
         }
 
         // Callout Admonitions: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
@@ -442,7 +465,7 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
               {items.map((item, itemIdx) => (
                 <li key={itemIdx} className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C7A46A] mt-2 flex-shrink-0" />
-                  <span>{renderInlineStyles(item.replace(/^[-*•]\s+/, ''))}</span>
+                  <span>{renderInlineStyles(item.replace(/^[-*•]\s+/, '').replace(/^#{1,6}\s*/, ''))}</span>
                 </li>
               ))}
             </ul>
@@ -463,7 +486,7 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
                     <span className="font-mono text-xs font-semibold text-[#C7A46A] mt-1 flex-shrink-0 w-5">
                       {num}.
                     </span>
-                    <span>{renderInlineStyles(itemContent)}</span>
+                    <span>{renderInlineStyles(itemContent.replace(/^#{1,6}\s*/, ''))}</span>
                   </li>
                 );
               })}
@@ -472,9 +495,11 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
         }
 
         // Standard Paragraph
+        // Strip any remaining raw `#` symbols (like #####) so they never leak as raw markdown syntax to the user
+        const cleanPara = trimmed.replace(/^#{1,6}\s+/gm, '');
         return (
           <p key={idx} className="text-[#2B1D17] dark:text-[#EDE1D5]">
-            {renderInlineStyles(trimmed)}
+            {renderInlineStyles(cleanPara)}
           </p>
         );
       })}
@@ -522,9 +547,11 @@ export function isSafeUrl(rawUrl: string): boolean {
 
 // Parse bold, italics, inline code, and links
 function renderInlineStyles(text: string): React.ReactNode {
+  // Strip any accidental leading hash markers
+  const cleanText = text.replace(/^#{1,6}\s*/, '');
   // Regex to split on `code`, **bold**, *italic*, [link](url)
   const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
-  const parts = text.split(pattern);
+  const parts = cleanText.split(pattern);
 
   return parts.map((part, index) => {
     if (!part) return null;

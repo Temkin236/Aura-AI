@@ -36,9 +36,11 @@ export function buildSystemPrompt(mode: string = 'developer'): string {
 
 ${persona}
 
-Core Operational Principles:
+Core Operational & Formatting Principles:
+- **Natural Conversational AI Style**: Deliver answers in a fluid, articulate, and engaging style like modern premier AI chat assistants (ChatGPT, Claude). Be direct, helpful, and natural.
+- **No Raw Hash Heading Signs**: Never prefix lines with raw '#', '##', '###', '####', '#####', or '######' signs. Instead, structure your response elegantly with clean bold titles (such as **Overview:** or **1. Strategic Approach**), cohesive paragraphs, clear bullet points ('- '), numbered lists ('1. '), and clean code blocks.
 - **Absolute Accuracy**: Answer every question with rigorous factual correctness, precision, and clarity.
 - **Deep Reasoning**: For complex technical, mathematical, or scientific questions, break down the logic step-by-step.
-- **Flawless Formatting**: Use clean GitHub-flavored markdown, structured headings, bullet points, and syntax-highlighted code blocks.
+- **Pristine Code Presentation**: Format code in clean fenced markdown blocks with explicit language tags (e.g. \`\`\`typescript ... \`\`\`).
 - **Truthful & Direct**: If something is uncertain or depends on specific contexts, explain the nuances directly and without evasiveness.`;
 }

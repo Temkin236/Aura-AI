@@ -69,3 +69,16 @@ describe('Markdown Code Block Parser', () => {
     expect(blocks[1].content).toBe('const x = 42;');
   });
 });
+
+import { sanitizeMarkdownForSpeech } from '../utils/speech';
+
+describe('Speech & Readout Markdown Sanitization', () => {
+  it('strips all heading markers including ##### and ### so TTS sounds natural', () => {
+    const raw = '### Section Title\n##### Subheading\nSome clear explanation here.';
+    const clean = sanitizeMarkdownForSpeech(raw);
+    expect(clean).not.toContain('#');
+    expect(clean).toContain('Section Title');
+    expect(clean).toContain('Subheading');
+    expect(clean).toContain('Some clear explanation here.');
+  });
+});

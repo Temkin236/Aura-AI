@@ -32,4 +32,10 @@ describe('AURA AI — Personas & Prompt Engineering', () => {
     const prompt = buildSystemPrompt('unknown-mode' as any);
     expect(prompt).toContain(PERSONA_PROMPTS.developer);
   });
+
+  it('explicitly instructs the AI to write in conversational style and avoid raw hash heading signs', () => {
+    const prompt = buildSystemPrompt('developer');
+    expect(prompt).toContain('No Raw Hash Heading Signs');
+    expect(prompt).toContain("Never prefix lines with raw '#'");
+  });
 });

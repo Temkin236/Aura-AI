@@ -12,6 +12,12 @@ export interface AIMode {
   suggestedPrompts: string[];
 }
 
+export interface MessageAttachment {
+  name: string;
+  size: number;
+  content: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -23,6 +29,8 @@ export interface Message {
   isStreaming?: boolean;
   isError?: boolean;
   durationMs?: number;
+  feedback?: 'like' | 'dislike';
+  attachments?: MessageAttachment[];
 }
 
 export interface Conversation {
@@ -40,4 +48,6 @@ export interface UserSettings {
   defaultMode: AIModeId;
   model: string;
   apiKey?: string;
+  soundEnabled?: boolean;
+  customInstructions?: string;
 }

@@ -8,6 +8,7 @@ import { AuraSymbol } from '../aura/AuraSymbol';
 import { AI_MODES } from '../../data/modes';
 import { soundFx } from '../../utils/sound';
 import {
+  Database,
   PanelLeft,
   Moon,
   Sun,
@@ -22,6 +23,14 @@ import {
   VolumeX,
   Zap,
 } from 'lucide-react';
+import {
+  fetchConversationsFromDb,
+  saveConversationToDb,
+  deleteConversationFromDb,
+  fetchMessagesFromDb,
+  saveMessageToDb,
+  updateMessageFeedbackInDb,
+} from '../../utils/api';
 
 interface ChatWorkspaceProps {
   onOpenSettings: () => void;
@@ -79,7 +88,43 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Sync to localStorage
+  // Initial fetch from Neon PostgreSQL Database
+  useEffect(() => {
+    let isMounted = true;
+    fetchConversationsFromDb().then(async (dbConvs) => {
+      if (!isMounted) return;
+      if (dbConvs && dbConvs.length > 0) {
+        setConversations(dbConvs);
+        const targetId = activeConversationId || dbConvs[0].id;
+        setActiveConversationId(targetId);
+        const dbMsgs = await fetchMessagesFromDb(targetId);
+        if (isMounted && dbMsgs && dbMsgs.length > 0) {
+          setMessagesMap((prev) => ({ ...prev, [targetId]: dbMsgs }));
+        }
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Sync messages from DB when active conversation changes
+  useEffect(() => {
+    if (!activeConversationId) return;
+    if (!messagesMap[activeConversationId] || messagesMap[activeConversationId].length === 0) {
+      let isMounted = true;
+      fetchMessagesFromDb(activeConversationId).then((dbMsgs) => {
+        if (isMounted && dbMsgs && dbMsgs.length > 0) {
+          setMessagesMap((prev) => ({ ...prev, [activeConversationId]: dbMsgs }));
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [activeConversationId]);
+
+  // Sync to localStorage as offline cache
   useEffect(() => {
     try {
       localStorage.setItem('aura_conversations', JSON.stringify(conversations));
@@ -149,11 +194,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
     setCurrentMode(initialMode);
+    saveConversationToDb(newConv);
     return newId;
   };
 
   // Delete Conversation
   const handleDeleteConversation = (id: string) => {
+    deleteConversationFromDb(id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
     setMessagesMap((prev) => {
       const copy = { ...prev };
@@ -170,14 +217,28 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   // Rename Conversation
   const handleRenameConversation = (id: string, newTitle: string) => {
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title: newTitle, updatedAt: Date.now() } : c))
+      prev.map((c) => {
+        if (c.id === id) {
+          const updated = { ...c, title: newTitle, updatedAt: Date.now() };
+          saveConversationToDb(updated);
+          return updated;
+        }
+        return c;
+      })
     );
   };
 
   // Pin / Unpin Conversation
   const handleTogglePin = (id: string) => {
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
+      prev.map((c) => {
+        if (c.id === id) {
+          const updated = { ...c, pinned: !c.pinned };
+          saveConversationToDb(updated);
+          return updated;
+        }
+        return c;
+      })
     );
   };
 
@@ -209,6 +270,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       [newId]: clonedMessages,
     }));
     setActiveConversationId(newId);
+    saveConversationToDb(newConv);
+    clonedMessages.forEach((m) => saveMessageToDb(m));
   };
 
   // Clear active conversation messages
@@ -457,21 +520,36 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       // Mark generation complete
       const durationMs = Date.now() - startTime;
       soundFx.playReceive();
+
+      const finalAssistantMessage: Message = {
+        id: assistantMsgId,
+        conversationId: convId!,
+        role: 'assistant',
+        content:
+          accumulatedContent ||
+          'No response received. Please ensure the server is restarted with `npm run dev` and check your API key in Settings.',
+        isStreaming: false,
+        durationMs,
+        mode,
+        timestamp: Date.now(),
+      };
+
       setMessagesMap((prev) => ({
         ...prev,
         [convId!]: (prev[convId!] || []).map((m) =>
-          m.id === assistantMsgId
-            ? {
-                ...m,
-                content:
-                  accumulatedContent ||
-                  'No response received. Please ensure the server is restarted with `npm run dev` and check your API key in Settings.',
-                isStreaming: false,
-                durationMs,
-              }
-            : m
+          m.id === assistantMsgId ? finalAssistantMessage : m
         ),
       }));
+
+      // Persist messages and conversation update to Neon DB
+      saveMessageToDb(userMessage);
+      saveMessageToDb(finalAssistantMessage);
+      saveConversationToDb({
+        id: convId!,
+        title: (text.trim() || 'Conversation').slice(0, 36),
+        mode,
+        updatedAt: Date.now(),
+      });
     } catch (err: any) {
       if (err.name === 'AbortError') {
         // User aborted intentionally
@@ -502,11 +580,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     if (!activeConversationId) return;
     setMessagesMap((prev) => {
       const msgs = prev[activeConversationId] || [];
+      const target = msgs.find((m) => m.id === messageId);
+      const nextFeedback = target?.feedback === feedback ? null : feedback;
+      updateMessageFeedbackInDb(messageId, nextFeedback);
       return {
         ...prev,
         [activeConversationId]: msgs.map((m) =>
           m.id === messageId
-            ? { ...m, feedback: m.feedback === feedback ? undefined : feedback }
+            ? { ...m, feedback: nextFeedback || undefined }
             : m
         ),
       };
@@ -603,7 +684,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             {/* Live Model Badge */}
             <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE1D5]/50 dark:bg-[#211814] border border-[#DCC9B8]/50 dark:border-[#3A2921] text-[10px] text-[#6B493B] dark:text-[#C7A46A] font-medium mr-1 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{(userSettings.model || 'gemini-2.5-flash').replace('gemini-', 'Gemini ')}</span>
+              <span>{(userSettings.model || 'gemini-3.5-flash').replace('gemini-', 'Gemini ')}</span>
+            </div>
+
+            {/* Neon PostgreSQL Cloud Sync Badge */}
+            <div
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE1D5]/50 dark:bg-[#211814] border border-[#DCC9B8]/50 dark:border-[#3A2921] text-[10px] text-[#6B493B] dark:text-[#C7A46A] font-medium mr-1 shadow-2xs"
+              title="Neon PostgreSQL Cloud Database: Active & Connected"
+            >
+              <Database className="w-3 h-3 text-[#C7A46A]" />
+              <span>Neon Cloud DB</span>
             </div>
 
             {/* New Chat Quick Button */}

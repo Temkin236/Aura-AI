@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ChatWorkspace } from './components/chat/ChatWorkspace';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { UserSettings } from './types';
+import {
+  fetchUserSettingsFromDb,
+  saveUserSettingsToDb,
+  clearAllConversationsFromDb,
+} from './utils/api';
 
 const DEFAULT_SETTINGS: UserSettings = {
   theme: 'light',
@@ -79,6 +84,18 @@ export default function App() {
     handleUpdateSettings({ theme: nextTheme });
   };
 
+  // Sync settings from Database on startup
+  useEffect(() => {
+    fetchUserSettingsFromDb().then((dbSettings) => {
+      if (dbSettings) {
+        setUserSettings((prev) => ({ ...prev, ...dbSettings }));
+        if (dbSettings.theme) {
+          applyTheme(dbSettings.theme);
+        }
+      }
+    });
+  }, []);
+
   const handleUpdateSettings = (newSettings: Partial<UserSettings>) => {
     setUserSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -88,11 +105,15 @@ export default function App() {
       try {
         localStorage.setItem('aura_settings', JSON.stringify(updated));
       } catch {}
+      saveUserSettingsToDb(updated);
       return updated;
     });
   };
 
-  const handleClearAllConversations = () => {
+  const handleClearAllConversations = async () => {
+    try {
+      await clearAllConversationsFromDb();
+    } catch {}
     localStorage.removeItem('aura_conversations');
     localStorage.removeItem('aura_messages');
     window.location.reload();

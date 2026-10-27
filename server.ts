@@ -41,13 +41,125 @@ export function resolveModelName(model: string): string {
   return model;
 }
 
-app.get('/api/health', (_req: Request, res: Response): void => {
+import {
+  initDatabase,
+  isDbConnected,
+  dbGetConversations,
+  dbUpsertConversation,
+  dbDeleteConversation,
+  dbDeleteAllConversations,
+  dbGetMessages,
+  dbSaveMessage,
+  dbUpdateMessageFeedback,
+  dbGetUserSettings,
+  dbSaveUserSettings,
+} from './src/server/db.js';
+
+app.get('/api/health', async (_req: Request, res: Response): Promise<void> => {
+  const dbConnected = await isDbConnected();
   res.status(200).json({
     status: 'ok',
     configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
     model: DEFAULT_GEMINI_MODEL,
     version: '0.2.0',
+    database: {
+      connected: dbConnected,
+      provider: 'neon-postgresql',
+    },
   });
+});
+
+// Database API Routes
+app.get('/api/conversations', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const convs = await dbGetConversations();
+    res.json({ conversations: convs });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to fetch conversations' });
+  }
+});
+
+app.post('/api/conversations', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const conv = req.body;
+    if (!conv?.id) {
+      res.status(400).json({ error: 'Conversation id is required' });
+      return;
+    }
+    await dbUpsertConversation(conv);
+    res.json({ success: true, conversation: conv });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to save conversation' });
+  }
+});
+
+app.delete('/api/conversations/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    await dbDeleteConversation(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to delete conversation' });
+  }
+});
+
+app.delete('/api/conversations', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    await dbDeleteAllConversations();
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to clear conversations' });
+  }
+});
+
+app.get('/api/conversations/:id/messages', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const msgs = await dbGetMessages(req.params.id);
+    res.json({ messages: msgs });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to fetch messages' });
+  }
+});
+
+app.post('/api/conversations/:id/messages', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const msg = req.body;
+    if (!msg?.id) {
+      res.status(400).json({ error: 'Message id is required' });
+      return;
+    }
+    await dbSaveMessage({ ...msg, conversationId: req.params.id });
+    res.json({ success: true, message: msg });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to save message' });
+  }
+});
+
+app.patch('/api/messages/:id/feedback', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { feedback } = req.body;
+    await dbUpdateMessageFeedback(req.params.id, feedback || null);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update feedback' });
+  }
+});
+
+app.get('/api/settings', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await dbGetUserSettings();
+    res.json({ settings });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to fetch settings' });
+  }
+});
+
+app.post('/api/settings', async (req: Request, res: Response): Promise<void> => {
+  try {
+    await dbSaveUserSettings(req.body);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to save settings' });
+  }
 });
 
 function generatePersonaFallback(prompt: string, mode: string = 'developer'): string {
@@ -327,6 +439,7 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
 });
 
 async function startServer() {
+  await initDatabase();
   if (process.env.NODE_ENV === 'production') {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));

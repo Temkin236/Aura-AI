@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Conversation, Message, AIModeId, UserSettings } from '../../types';
+import { Conversation, Message, AIModeId, UserSettings, MessageAttachment } from '../../types';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessage } from './ChatMessage';
 import { ChatComposer } from './ChatComposer';
 import { WelcomeScreen } from './WelcomeScreen';
 import { AuraSymbol } from '../aura/AuraSymbol';
 import { AI_MODES } from '../../data/modes';
+import { soundFx } from '../../utils/sound';
 import {
   PanelLeft,
   Moon,
@@ -17,6 +18,9 @@ import {
   Settings as SettingsIcon,
   FileText,
   FileJson,
+  Volume2,
+  VolumeX,
+  Zap,
 } from 'lucide-react';
 
 interface ChatWorkspaceProps {
@@ -296,8 +300,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   };
 
   // Send Message with Real Gemini SSE Streaming
-  const handleSendMessage = async (text: string, mode: AIModeId = currentMode) => {
-    if (!text.trim() || isGenerating) return;
+  const handleSendMessage = async (
+    text: string,
+    mode: AIModeId = currentMode,
+    attachments?: MessageAttachment[]
+  ) => {
+    if ((!text.trim() && (!attachments || attachments.length === 0)) || isGenerating) return;
 
     let convId = activeConversationId;
     let isFirstMessage = false;
@@ -317,7 +325,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       const cleanTitle = text.trim().slice(0, 32) + (text.trim().length > 32 ? '...' : '');
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === convId ? { ...c, title: cleanTitle, mode, updatedAt: Date.now() } : c
+          c.id === convId ? { ...c, title: cleanTitle || 'New Conversation', mode, updatedAt: Date.now() } : c
         )
       );
     }
@@ -332,6 +340,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       content: text.trim(),
       timestamp: Date.now(),
       mode,
+      attachments,
     };
 
     const initialAssistantMessage: Message = {
@@ -374,6 +383,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           mode,
           model: userSettings.model || 'gemini-2.5-flash',
           apiKey: userSettings.apiKey,
+          customInstructions: userSettings.customInstructions,
         }),
         signal: controller.signal,
       });
@@ -446,6 +456,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
       // Mark generation complete
       const durationMs = Date.now() - startTime;
+      soundFx.playReceive();
       setMessagesMap((prev) => ({
         ...prev,
         [convId!]: (prev[convId!] || []).map((m) =>
@@ -486,6 +497,22 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }
   };
 
+  // Toggle user feedback on AI responses
+  const handleToggleFeedback = (messageId: string, feedback: 'like' | 'dislike') => {
+    if (!activeConversationId) return;
+    setMessagesMap((prev) => {
+      const msgs = prev[activeConversationId] || [];
+      return {
+        ...prev,
+        [activeConversationId]: msgs.map((m) =>
+          m.id === messageId
+            ? { ...m, feedback: m.feedback === feedback ? undefined : feedback }
+            : m
+        ),
+      };
+    });
+  };
+
   // Regenerate Latest Assistant Response
   const handleRegenerate = () => {
     if (!activeConversationId || isGenerating) return;
@@ -510,7 +537,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       [activeConversationId]: trimmedMsgs,
     }));
 
-    handleSendMessage(lastUserMessage.content, lastUserMessage.mode || currentMode);
+    handleSendMessage(lastUserMessage.content, lastUserMessage.mode || currentMode, lastUserMessage.attachments);
   };
 
   const activeConv = conversations.find((c) => c.id === activeConversationId);
@@ -565,7 +592,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <h2 className="font-serif font-medium text-xs sm:text-sm text-[#2B1D17] dark:text-[#FCFAF7] truncate max-w-[150px] sm:max-w-xs md:max-w-md">
                 {activeConv ? activeConv.title : 'AURA AI'}
               </h2>
-              <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#C7A46A] font-medium">
+              <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-[#EDE1D5]/60 dark:bg-[#2B1D17] text-[#6B493B] dark:text-[#C7A46A] font-medium border border-[#DCC9B8]/40 dark:border-[#3A2921]">
                 {activeModeInfo.name}
               </span>
             </div>
@@ -573,6 +600,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
           {/* Quick Header Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* Live Model Badge */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE1D5]/50 dark:bg-[#211814] border border-[#DCC9B8]/50 dark:border-[#3A2921] text-[10px] text-[#6B493B] dark:text-[#C7A46A] font-medium mr-1 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{(userSettings.model || 'gemini-2.5-flash').replace('gemini-', 'Gemini ')}</span>
+            </div>
+
             {/* New Chat Quick Button */}
             <button
               onClick={() => handleNewConversation()}
@@ -581,6 +614,24 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               aria-label="New Chat"
             >
               <Plus className="w-4 h-4 text-[#C7A46A]" />
+            </button>
+
+            {/* Sound FX Quick Toggle */}
+            <button
+              onClick={() => {
+                const nextState = !soundFx.getEnabled();
+                soundFx.setEnabled(nextState);
+                if (nextState) soundFx.playReceive();
+              }}
+              className="p-1.5 sm:p-2 rounded-xl text-[#8A7A70] hover:text-[#2B1D17] dark:hover:text-[#FCFAF7] hover:bg-[#EDE1D5]/60 dark:hover:bg-[#2B1D17] active:scale-95 transition-all cursor-pointer"
+              title={soundFx.getEnabled() ? 'Harmonic sound: ON' : 'Harmonic sound: OFF'}
+              aria-label="Toggle sound"
+            >
+              {soundFx.getEnabled() ? (
+                <Volume2 className="w-4 h-4 text-[#C7A46A]" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
             </button>
 
             {/* Export Chat */}
@@ -660,12 +711,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-2 scrollbar-thin"
+          className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-2 scrollbar-thin aura-ambient-bg"
         >
           {activeMessages.length === 0 ? (
             <WelcomeScreen
               currentMode={currentMode}
               onSelectMode={setCurrentMode}
+              currentModel={userSettings.model}
               onSelectPrompt={(prompt, mode) => {
                 setCurrentMode(mode);
                 handleSendMessage(prompt, mode);
@@ -678,6 +730,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 message={msg}
                 isLatest={idx === activeMessages.length - 1}
                 onRegenerate={handleRegenerate}
+                onToggleFeedback={handleToggleFeedback}
               />
             ))
           )}

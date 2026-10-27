@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react';
 import {
+  API_BASE,
   fetchConversationsFromDb,
   saveConversationToDb,
   deleteConversationFromDb,
@@ -433,7 +434,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch('/api/chat/stream', {
+      const response = await fetch(`${API_BASE}/api/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,7 @@
 import { Conversation, Message, UserSettings } from '../types';
 
+export const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 export interface DatabaseStatus {
   connected: boolean;
   provider: string;
@@ -12,14 +14,14 @@ export async function fetchHealthStatus(): Promise<{
   version: string;
   database?: DatabaseStatus;
 }> {
-  const res = await fetch('/api/health');
+  const res = await fetch(`${API_BASE}/api/health`);
   if (!res.ok) throw new Error('Health check failed');
   return res.json();
 }
 
 export async function fetchConversationsFromDb(): Promise<Conversation[]> {
   try {
-    const res = await fetch('/api/conversations');
+    const res = await fetch(`${API_BASE}/api/conversations`);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.conversations) ? data.conversations : [];
@@ -31,7 +33,7 @@ export async function fetchConversationsFromDb(): Promise<Conversation[]> {
 
 export async function saveConversationToDb(conv: Partial<Conversation> & { id: string }): Promise<void> {
   try {
-    await fetch('/api/conversations', {
+    await fetch(`${API_BASE}/api/conversations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(conv),
@@ -43,7 +45,7 @@ export async function saveConversationToDb(conv: Partial<Conversation> & { id: s
 
 export async function deleteConversationFromDb(id: string): Promise<void> {
   try {
-    await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
+    await fetch(`${API_BASE}/api/conversations/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   } catch (err) {
@@ -53,7 +55,7 @@ export async function deleteConversationFromDb(id: string): Promise<void> {
 
 export async function clearAllConversationsFromDb(): Promise<void> {
   try {
-    await fetch('/api/conversations', {
+    await fetch(`${API_BASE}/api/conversations`, {
       method: 'DELETE',
     });
   } catch (err) {
@@ -63,7 +65,7 @@ export async function clearAllConversationsFromDb(): Promise<void> {
 
 export async function fetchMessagesFromDb(conversationId: string): Promise<Message[]> {
   try {
-    const res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/messages`);
+    const res = await fetch(`${API_BASE}/api/conversations/${encodeURIComponent(conversationId)}/messages`);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.messages) ? data.messages : [];
@@ -75,7 +77,7 @@ export async function fetchMessagesFromDb(conversationId: string): Promise<Messa
 
 export async function saveMessageToDb(msg: Partial<Message> & { id: string; conversationId: string }): Promise<void> {
   try {
-    await fetch(`/api/conversations/${encodeURIComponent(msg.conversationId)}/messages`, {
+    await fetch(`${API_BASE}/api/conversations/${encodeURIComponent(msg.conversationId)}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msg),
@@ -87,7 +89,7 @@ export async function saveMessageToDb(msg: Partial<Message> & { id: string; conv
 
 export async function updateMessageFeedbackInDb(messageId: string, feedback: 'like' | 'dislike' | null): Promise<void> {
   try {
-    await fetch(`/api/messages/${encodeURIComponent(messageId)}/feedback`, {
+    await fetch(`${API_BASE}/api/messages/${encodeURIComponent(messageId)}/feedback`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ feedback }),
@@ -99,7 +101,7 @@ export async function updateMessageFeedbackInDb(messageId: string, feedback: 'li
 
 export async function fetchUserSettingsFromDb(): Promise<Partial<UserSettings> | null> {
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch(`${API_BASE}/api/settings`);
     if (!res.ok) return null;
     const data = await res.json();
     return data?.settings || null;
@@ -111,7 +113,7 @@ export async function fetchUserSettingsFromDb(): Promise<Partial<UserSettings> |
 
 export async function saveUserSettingsToDb(settings: Partial<UserSettings>): Promise<void> {
   try {
-    await fetch('/api/settings', {
+    await fetch(`${API_BASE}/api/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),

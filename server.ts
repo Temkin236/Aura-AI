@@ -16,20 +16,27 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 app.use(express.json({ limit: '5mb' }));
 
 export const ALLOWED_MODELS = [
-  'gemini-2.0-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
   'gemini-2.5-flash',
-  'gemini-2.5-pro',
+  'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro',
 ] as const;
 
 export type SupportedModel = (typeof ALLOWED_MODELS)[number];
-export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-2.0-flash';
+export const DEFAULT_GEMINI_MODEL = (process.env.GEMINI_MODEL as SupportedModel) || 'gemini-3.5-flash';
 
 export function resolveModelName(model: string): string {
   if (!model) return DEFAULT_GEMINI_MODEL;
-  if (model.includes('3.') || model.includes('latest')) {
-    return 'gemini-2.0-flash';
+  if (model.includes('3.5-flash-lite')) return 'gemini-3.5-flash-lite';
+  if (model.includes('3.5') || model.includes('3.8') || model.includes('latest')) {
+    return 'gemini-3.5-flash';
+  }
+  // If model is older 2.x or 1.x which Google deprecated for new accounts, route to gemini-3.5-flash
+  if (model.includes('2.5') || model.includes('2.0') || model.includes('1.5')) {
+    return 'gemini-3.5-flash';
   }
   return model;
 }
@@ -50,67 +57,113 @@ function generatePersonaFallback(prompt: string, mode: string = 'developer'): st
 
 Regarding: **"${prompt}"**
 
-1. **System Design Considerations**:
-   - Maintain clear separation of concerns and immutable data flow.
-   - Leverage asynchronous patterns with graceful backpressure handling.
+> [!TIP]
+> Prioritize immutable data flow and asynchronous boundaries with graceful backpressure handling.
 
-2. **Implementation Example**:
+#### 1. Architectural Strategy
+| Layer | Core Responsibility | Key Mechanism |
+| :--- | :--- | :--- |
+| **Ingress** | Input validation & sanitization | Schema validation, rate limits |
+| **Execution** | Async task scheduling | Non-blocking Event Loop |
+| **Persistence** | Resilient storage & caching | In-memory cache + write-through |
+
+#### 2. Implementation Specification
 \`\`\`typescript
-export async function handleTask(payload: Record<string, unknown>): Promise<boolean> {
+export interface TaskPayload<T = unknown> {
+  id: string;
+  timestamp: number;
+  data: T;
+}
+
+export async function processTask<T>(payload: TaskPayload<T>): Promise<{ success: boolean; durationMs: number }> {
+  const start = performance.now();
   try {
-    if (!payload) return false;
-    await Promise.resolve(payload);
-    return true;
+    if (!payload?.id) throw new Error('Invalid task identifier');
+    await Promise.resolve(payload.data);
+    return { success: true, durationMs: performance.now() - start };
   } catch (err) {
-    console.error('Task failed:', err);
-    return false;
+    console.error('[AURA] Task execution failed:', err);
+    return { success: false, durationMs: performance.now() - start };
   }
 }
 \`\`\`
 
-*Add your Gemini API Key in Settings (⚙️) for full live AI streaming.*`;
+- [x] Strict type-safety with generic payload constraints
+- [x] Comprehensive timing instrumentation
+- [ ] Add your Gemini API Key in **Settings (⚙️)** for live streaming generation`;
 
     case 'tutor':
       return `### First Principles Breakdown
 
-Let's explore **"${prompt}"**:
+Let's explore: **"${prompt}"**
 
-1. **Core Concept**: Every complex topic is built from simple, intuitive foundations.
-2. **Key Mechanism**: Understanding the relationships between core components.
-3. **Application**: How to leverage this insight to solve real problems.
+> [!NOTE]
+> Every complex concept is simply an accumulation of intuitive, basic principles stacked logically.
 
-*Add your Gemini API Key in Settings (⚙️) for live interactive tutoring.*`;
+#### Step 1: The Core Intuition
+Imagine a relay race where each runner represents a discrete transformation. The batons passed between them are your data structures.
+
+#### Step 2: Conceptual Mapping
+| Concept | Everyday Analogy | Technical Reality |
+| :--- | :--- | :--- |
+| **Abstraction** | Car steering wheel | Hiding mechanical complexity behind simple controls |
+| **State** | Water in a vessel | The memory snapshot at any given point in time |
+| **Iteration** | Clock ticks | Repeated systematic execution until a condition is satisfied |
+
+---
+
+*Add your Gemini API Key in **Settings (⚙️)** for interactive live Socratic dialogues.*`;
 
     case 'creative':
       return `### Creative Reflection
 
-*Exploring: "${prompt}"*
+*Exploring the contours of: "${prompt}"*
 
-Atmosphere and intention create resonance:
-- **Sensory Resonance**: Visual rhythm, tone, and intentional texture.
-- **Harmonic Cadence**: Contrasting declarative ideas with evocative flow.
+> [!TIP]
+> True elegance lies not in excess, but in the intentional resonance between tone, structure, and cadence.
 
-*Add your Gemini API Key in Settings (⚙️) for live creative generation.*`;
+Atmosphere and resonance intertwine:
+- **Sensory Resonance**: The rhythmic interplay of shadow, texture, and silence.
+- **Harmonic Cadence**: Contrasting deliberate, sparse declarations with expansive evocative flow.
+
+---
+
+*Add your Gemini API Key in **Settings (⚙️)** for open-ended poetic and narrative generation.*`;
 
     case 'professional':
-      return `### Executive Assessment
+      return `### Executive Strategic Synthesis
 
-**Topic**: ${prompt}
+**Subject**: ${prompt}
 
-1. **Objective**: High-signal execution with minimal operational friction.
-2. **Key Actions**: Discovery, structured rollout, and observability.
-3. **Next Steps**: Validate milestones and review metrics.
+> [!IMPORTANT]
+> Targeted for immediate executive clarity: minimize operational overhead while maximizing signal-to-noise ratio.
 
-*Add your Gemini API Key in Settings (⚙️) for live executive synthesis.*`;
+#### Strategic Evaluation Matrix
+| Workstream | Priority | Key Milestone | Target Impact |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | Immediate | Architectural Discovery | Establish baseline metrics |
+| **Phase 2** | Mid-term | Structured Rollout | 40% reduction in cycle friction |
+| **Phase 3** | Long-term | Observability & Governance | Autonomous resilience |
+
+#### Actionable Recommendations
+- [x] Validate resource attribution and environment variables
+- [x] Establish automated integration verification
+- [ ] Add your Gemini API Key in **Settings (⚙️)** for real-time executive advisory`;
 
     default:
-      return `### Hello from AURA ✨
+      return `### AURA Intelligent Companion ✨
 
 Regarding **"${prompt}"**:
-- Let's break this down into clear, actionable steps.
-- Feel free to ask more or switch persona modes at any time.
 
-*Add your Gemini API Key in Settings (⚙️) for live conversation.*`;
+> [!NOTE]
+> Ready to assist across coding, research, writing, and structured thinking.
+
+- Let's break this down into clear, actionable steps.
+- You can switch between **Developer**, **Creative**, **Tutor**, **Friendly**, and **Professional** personas at any time.
+
+---
+
+*Add your Gemini API Key in **Settings (⚙️)** to unlock unconstrained live Gemini intelligence.*`;
   }
 }
 
@@ -154,7 +207,7 @@ async function callGeminiRest(
 app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> => {
   const rawText = req.body.message ?? req.body.prompt;
   const message = typeof rawText === 'string' ? rawText.trim() : '';
-  const { history, mode = 'developer', model, apiKey: clientApiKey } = req.body;
+  const { history, mode = 'developer', model, apiKey: clientApiKey, customInstructions } = req.body;
 
   if (!message) {
     res.status(400).json({ error: 'A valid, non-empty message is required.' });
@@ -177,7 +230,10 @@ app.post('/api/chat/stream', async (req: Request, res: Response): Promise<void> 
 
   const targetModel = resolveModelName(typeof model === 'string' ? model : DEFAULT_GEMINI_MODEL);
   const targetMode = typeof mode === 'string' ? mode : 'developer';
-  const systemInstruction = buildSystemPrompt(targetMode);
+  let systemInstruction = buildSystemPrompt(targetMode);
+  if (typeof customInstructions === 'string' && customInstructions.trim()) {
+    systemInstruction += `\n\nUser Custom Guidance:\n${customInstructions.trim()}`;
+  }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');

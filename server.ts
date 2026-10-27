@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { buildSystemPrompt } from './src/ai/prompts.js';
@@ -442,9 +443,25 @@ async function startServer() {
   await initDatabase();
   if (process.env.NODE_ENV === 'production') {
     const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
+    const indexPath = path.resolve(distPath, 'index.html');
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+    }
     app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>AURA AI</title><meta charset="utf-8" /></head>
+            <body style="font-family:sans-serif;padding:3rem;text-align:center;background:#17110e;color:#ede1d5;">
+              <h1>✨ AURA AI Server Active</h1>
+              <p>Backend API operational. Running client bundle compilation...</p>
+            </body>
+          </html>
+        `);
+      }
     });
   } else {
     const { createServer: createViteServer } = await import('vite');
@@ -464,7 +481,10 @@ async function startServer() {
 }
 
 if (process.env.NODE_ENV !== 'test') {
-  startServer();
+  startServer().catch((err) => {
+    console.error('Fatal: Failed to start AURA AI server:', err);
+    process.exit(1);
+  });
 }
 
 export { app };

@@ -19,7 +19,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=10000
 
 # Install production dependencies only
 COPY package*.json ./
@@ -31,7 +31,8 @@ COPY --from=builder /app/server.ts ./server.ts
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
-# Expose standard port
+# Expose Render standard port (10000) and fallback (3000)
+EXPOSE 10000
 EXPOSE 3000
 
 # Start server using tsx in production mode
